@@ -22,6 +22,7 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.rtsp.RtspMediaSource
 import org.cygnusx1.openbu.ui.ConnectionScreen
 import org.cygnusx1.openbu.ui.DashboardScreen
+import org.cygnusx1.openbu.ui.FileManagerScreen
 import org.cygnusx1.openbu.ui.PrinterSettingsScreen
 import org.cygnusx1.openbu.ui.RtspStreamScreen
 import org.cygnusx1.openbu.ui.SettingsScreen
@@ -60,6 +61,7 @@ class MainActivity : ComponentActivity() {
                 var showRtspFullscreen by rememberSaveable { mutableStateOf(false) }
                 var showSettings by rememberSaveable { mutableStateOf(false) }
                 var showPrinterSettings by rememberSaveable { mutableStateOf(false) }
+                var showFileManager by rememberSaveable { mutableStateOf(false) }
                 val effectiveRtspUrl = if (rtspEnabled && rtspUrl.isNotBlank()) rtspUrl else ""
 
                 // Shared ExoPlayer for RTSP — survives screen transitions
@@ -79,7 +81,48 @@ class MainActivity : ComponentActivity() {
                     onDispose { rtspPlayer?.release() }
                 }
 
+                val fileList by viewModel.fileList.collectAsState()
+                val currentFtpPath by viewModel.currentFtpPath.collectAsState()
+                val ftpLoading by viewModel.ftpLoading.collectAsState()
+                val ftpError by viewModel.ftpError.collectAsState()
+                val ftpTransferProgress by viewModel.ftpTransferProgress.collectAsState()
+                val ftpTransferName by viewModel.ftpTransferName.collectAsState()
+
                 when {
+                    // File manager stays visible even if camera/MQTT drops
+                    showFileManager -> {
+                        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+                        BackHandler {
+                            if (currentFtpPath != "/") {
+                                viewModel.navigateUp()
+                            } else {
+                                viewModel.closeFileManager()
+                                showFileManager = false
+                            }
+                        }
+                        FileManagerScreen(
+                            fileList = fileList,
+                            currentPath = currentFtpPath,
+                            isLoading = ftpLoading,
+                            error = ftpError,
+                            transferProgress = ftpTransferProgress,
+                            transferName = ftpTransferName,
+                            onCancelTransfer = { viewModel.cancelTransfer() },
+                            onNavigateTo = { viewModel.navigateTo(it) },
+                            onNavigateUp = { viewModel.navigateUp() },
+                            onDownloadFile = { viewModel.downloadFile(it) },
+                            onUploadFile = { viewModel.uploadFile(it) },
+                            onClearError = { viewModel.clearFtpError() },
+                            onBack = {
+                                if (currentFtpPath != "/") {
+                                    viewModel.navigateUp()
+                                } else {
+                                    viewModel.closeFileManager()
+                                    showFileManager = false
+                                }
+                            },
+                        )
+                    }
                     connectionState == ConnectionState.Connected && showSettings -> {
                         requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
                         BackHandler { showSettings = false }
@@ -140,6 +183,8 @@ class MainActivity : ComponentActivity() {
                             showRtspFullscreen = false
                             showSettings = false
                             showPrinterSettings = false
+                            showFileManager = false
+                            viewModel.closeFileManager()
                             viewModel.disconnect()
                             window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
                         }
@@ -156,6 +201,10 @@ class MainActivity : ComponentActivity() {
                             onOpenRtspFullscreen = { showRtspFullscreen = true },
                             onOpenSettings = { showSettings = true },
                             onOpenPrinterSettings = { showPrinterSettings = true },
+                            onOpenFileManager = {
+                                viewModel.openFileManager()
+                                showFileManager = true
+                            },
                         )
                     }
                     else -> {
@@ -165,6 +214,7 @@ class MainActivity : ComponentActivity() {
                         showRtspFullscreen = false
                         showSettings = false
                         showPrinterSettings = false
+                        showFileManager = false
                         ConnectionScreen(
                             connectionState = connectionState,
                             errorMessage = errorMessage,

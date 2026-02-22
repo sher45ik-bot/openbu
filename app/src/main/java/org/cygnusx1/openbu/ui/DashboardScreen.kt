@@ -22,6 +22,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Print
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Card
@@ -65,6 +66,7 @@ fun DashboardScreen(
     onOpenRtspFullscreen: () -> Unit,
     onOpenSettings: () -> Unit,
     onOpenPrinterSettings: () -> Unit,
+    onOpenFileManager: () -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -77,15 +79,21 @@ fun DashboardScreen(
         Spacer(modifier = Modifier.height(48.dp))
 
         Box(modifier = Modifier.fillMaxWidth()) {
-            IconButton(
-                onClick = onOpenPrinterSettings,
-                modifier = Modifier.align(Alignment.CenterStart),
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.Print,
-                    contentDescription = "Printer Settings",
-                    tint = MaterialTheme.colorScheme.onBackground,
-                )
+            Row(modifier = Modifier.align(Alignment.CenterStart)) {
+                IconButton(onClick = onOpenPrinterSettings) {
+                    Icon(
+                        imageVector = Icons.Filled.Print,
+                        contentDescription = "Printer Settings",
+                        tint = MaterialTheme.colorScheme.onBackground,
+                    )
+                }
+                IconButton(onClick = onOpenFileManager) {
+                    Icon(
+                        imageVector = Icons.Filled.Folder,
+                        contentDescription = "File Manager",
+                        tint = MaterialTheme.colorScheme.onBackground,
+                    )
+                }
             }
             Text(
                 text = "Openbu",

@@ -3,14 +3,18 @@ package org.cygnusx1.openbu.viewmodel
 import android.app.Application
 import android.content.Intent
 import android.graphics.Bitmap
+import android.net.Uri
+import android.os.Environment
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import org.cygnusx1.openbu.network.BambuCameraClient
+import org.cygnusx1.openbu.network.BambuFtpsClient
 import org.cygnusx1.openbu.network.BambuMqttClient
 import org.cygnusx1.openbu.network.BambuSsdpClient
 import org.cygnusx1.openbu.network.DiscoveredPrinter
+import org.cygnusx1.openbu.network.FtpFileEntry
 import org.cygnusx1.openbu.network.PrinterStatus
 import org.cygnusx1.openbu.network.SavedPrinter
 import org.cygnusx1.openbu.service.ConnectionForegroundService
@@ -21,6 +25,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.io.File
+import java.io.FileOutputStream
+import java.io.IOException
 
 enum class ConnectionState {
     Disconnected,
@@ -85,10 +92,30 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
     private val ssdpClient = BambuSsdpClient()
     val discoveredPrinters: StateFlow<List<DiscoveredPrinter>> = ssdpClient.discoveredPrinters
 
+    private val _fileList = MutableStateFlow<List<FtpFileEntry>>(emptyList())
+    val fileList: StateFlow<List<FtpFileEntry>> = _fileList.asStateFlow()
+
+    private val _currentFtpPath = MutableStateFlow("/")
+    val currentFtpPath: StateFlow<String> = _currentFtpPath.asStateFlow()
+
+    private val _ftpLoading = MutableStateFlow(false)
+    val ftpLoading: StateFlow<Boolean> = _ftpLoading.asStateFlow()
+
+    private val _ftpError = MutableStateFlow<String?>(null)
+    val ftpError: StateFlow<String?> = _ftpError.asStateFlow()
+
+    private val _ftpTransferProgress = MutableStateFlow<Float?>(null)
+    val ftpTransferProgress: StateFlow<Float?> = _ftpTransferProgress.asStateFlow()
+
+    private val _ftpTransferName = MutableStateFlow<String?>(null)
+    val ftpTransferName: StateFlow<String?> = _ftpTransferName.asStateFlow()
+
     private var client: BambuCameraClient? = null
     private var streamJob: Job? = null
     private var mqttClient: BambuMqttClient? = null
     private var mqttJob: Job? = null
+    private var ftpClient: BambuFtpsClient? = null
+    private var ftpTransferJob: Job? = null
     private var userDisconnected = false
 
     private val prefs by lazy {
@@ -190,6 +217,22 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
             _connectionState.value == ConnectionState.Connected
         ) return
 
+        // Clean up any stale stream/MQTT from a previous connection
+        streamJob?.cancel()
+        streamJob = null
+        mqttJob?.cancel()
+        mqttJob = null
+        val oldCam = client
+        val oldMqtt = mqttClient
+        client = null
+        mqttClient = null
+        if (oldCam != null || oldMqtt != null) {
+            viewModelScope.launch(Dispatchers.IO) {
+                oldCam?.close()
+                oldMqtt?.close()
+            }
+        }
+
         userDisconnected = false
         saveCredentials(ip, accessCode, serialNumber)
         _connectedIp.value = ip
@@ -232,9 +275,16 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
                 throw e
             } catch (e: Exception) {
                 if (!userDisconnected) {
-                    _errorMessage.value = "Connection to printer failed"
-                    _connectionState.value = ConnectionState.Error
-                    cleanupConnections()
+                    if (ftpClient != null) {
+                        // FTP is active — don't tear everything down, just note the stream died
+                        _connectionState.value = ConnectionState.Error
+                        _frame.value = null
+                        _fps.value = 0f
+                    } else {
+                        _errorMessage.value = "Connection to printer failed"
+                        _connectionState.value = ConnectionState.Error
+                        cleanupConnections()
+                    }
                 }
             }
         }
@@ -365,9 +415,223 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
         loadSavedPrinters()
     }
 
+    fun openFileManager() {
+        val ip = _connectedIp.value
+        val code = _connectedAccessCode.value
+        if (ip.isBlank() || code.isBlank()) return
+
+        _ftpLoading.value = true
+        _ftpError.value = null
+        _fileList.value = emptyList()
+        _currentFtpPath.value = "/"
+
+        viewModelScope.launch {
+            try {
+                val client = BambuFtpsClient(ip, code)
+                client.connect()
+                ftpClient = client
+                val files = client.listDirectory("/")
+                _fileList.value = files.sortedWith(compareByDescending<FtpFileEntry> { it.isDirectory }.thenBy { it.name })
+                _currentFtpPath.value = "/"
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _ftpError.value = "Failed to connect: ${e.message}"
+            } finally {
+                _ftpLoading.value = false
+            }
+        }
+    }
+
+    fun navigateTo(dirName: String) {
+        val client = ftpClient ?: return
+        _ftpLoading.value = true
+        _ftpError.value = null
+
+        val newPath = if (_currentFtpPath.value.endsWith("/")) {
+            _currentFtpPath.value + dirName
+        } else {
+            _currentFtpPath.value + "/" + dirName
+        }
+
+        viewModelScope.launch {
+            try {
+                val files = client.listDirectory(newPath)
+                _fileList.value = files.sortedWith(compareByDescending<FtpFileEntry> { it.isDirectory }.thenBy { it.name })
+                _currentFtpPath.value = newPath
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _ftpError.value = "Failed to list directory: ${e.message}"
+            } finally {
+                _ftpLoading.value = false
+            }
+        }
+    }
+
+    fun navigateUp() {
+        val current = _currentFtpPath.value
+        if (current == "/") return
+        val parent = current.substringBeforeLast("/").ifEmpty { "/" }
+        val client = ftpClient ?: return
+        _ftpLoading.value = true
+        _ftpError.value = null
+
+        viewModelScope.launch {
+            try {
+                val files = client.listDirectory(parent)
+                _fileList.value = files.sortedWith(compareByDescending<FtpFileEntry> { it.isDirectory }.thenBy { it.name })
+                _currentFtpPath.value = parent
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _ftpError.value = "Failed to navigate up: ${e.message}"
+            } finally {
+                _ftpLoading.value = false
+            }
+        }
+    }
+
+    fun downloadFile(entry: FtpFileEntry) {
+        val client = ftpClient ?: return
+        val currentPath = _currentFtpPath.value
+        val remotePath = if (currentPath.endsWith("/")) "$currentPath${entry.name}" else "$currentPath/${entry.name}"
+
+        _ftpTransferName.value = "Downloading ${entry.name}"
+        _ftpTransferProgress.value = 0f
+
+        ftpTransferJob = viewModelScope.launch {
+            try {
+                val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+                val file = File(downloadsDir, entry.name)
+                FileOutputStream(file).use { output ->
+                    client.downloadFile(remotePath, output, totalSize = entry.size) { bytesRead, totalBytes ->
+                        if (totalBytes > 0) {
+                            _ftpTransferProgress.value = (bytesRead.toFloat() / totalBytes).coerceIn(0f, 1f)
+                        }
+                    }
+                }
+                _ftpTransferName.value = "Saved to Downloads/${entry.name}"
+                _ftpTransferProgress.value = null
+            } catch (e: CancellationException) {
+                _ftpTransferName.value = null
+                _ftpTransferProgress.value = null
+            } catch (e: Exception) {
+                _ftpError.value = "Download failed: ${e.message}"
+                _ftpTransferName.value = null
+                _ftpTransferProgress.value = null
+            } finally {
+                ftpTransferJob = null
+            }
+        }
+    }
+
+    fun uploadFile(uri: Uri) {
+        val client = ftpClient ?: return
+        val app = getApplication<Application>()
+
+        // Resolve display name and file size from content resolver
+        var fileName = uri.lastPathSegment?.substringAfterLast("/") ?: "upload"
+        var fileSize = -1L
+        app.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+            if (cursor.moveToFirst()) {
+                val nameIdx = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                if (nameIdx >= 0) cursor.getString(nameIdx)?.let { fileName = it }
+                val sizeIdx = cursor.getColumnIndex(android.provider.OpenableColumns.SIZE)
+                if (sizeIdx >= 0) fileSize = cursor.getLong(sizeIdx)
+            }
+        }
+
+        val lowerName = fileName.lowercase()
+        if (!lowerName.endsWith(".3mf") && !lowerName.endsWith(".gcode")) {
+            _ftpError.value = "Only .3mf and .gcode files can be uploaded"
+            return
+        }
+
+        val currentPath = _currentFtpPath.value
+        val remotePath = if (currentPath.endsWith("/")) "$currentPath$fileName" else "$currentPath/$fileName"
+
+        _ftpTransferName.value = "Uploading $fileName"
+        _ftpTransferProgress.value = 0f
+        _ftpError.value = null
+
+        ftpTransferJob = viewModelScope.launch {
+            try {
+                app.contentResolver.openInputStream(uri)?.use { input ->
+                    client.uploadFile(remotePath, input, totalSize = fileSize) { bytesWritten, totalBytes ->
+                        if (totalBytes > 0) {
+                            _ftpTransferProgress.value = (bytesWritten.toFloat() / totalBytes).coerceIn(0f, 1f)
+                        }
+                    }
+                } ?: throw IOException("Cannot open file")
+                _ftpTransferName.value = null
+                _ftpTransferProgress.value = null
+                // Refresh listing
+                _ftpLoading.value = true
+                val files = client.listDirectory(currentPath)
+                _fileList.value = files.sortedWith(compareByDescending<FtpFileEntry> { it.isDirectory }.thenBy { it.name })
+                _currentFtpPath.value = currentPath
+            } catch (e: CancellationException) {
+                // Cancelled by user
+            } catch (e: Exception) {
+                _ftpError.value = "Upload failed: ${e.message}"
+            } finally {
+                ftpTransferJob = null
+                _ftpTransferName.value = null
+                _ftpTransferProgress.value = null
+                _ftpLoading.value = false
+            }
+        }
+    }
+
+    fun cancelTransfer() {
+        ftpClient?.cancelTransfer()
+        ftpTransferJob?.cancel()
+        ftpTransferJob = null
+        _ftpTransferName.value = null
+        _ftpTransferProgress.value = null
+    }
+
+    fun clearFtpTransferStatus() {
+        _ftpTransferName.value = null
+        _ftpTransferProgress.value = null
+    }
+
+    fun clearFtpError() {
+        _ftpError.value = null
+    }
+
+    fun closeFileManager() {
+        val ftp = ftpClient
+        ftpClient = null
+        _fileList.value = emptyList()
+        _currentFtpPath.value = "/"
+        _ftpError.value = null
+        _ftpLoading.value = false
+        _ftpTransferName.value = null
+        _ftpTransferProgress.value = null
+        viewModelScope.launch(Dispatchers.IO) {
+            ftp?.close()
+        }
+
+        // Reconnect camera + MQTT if the connection dropped while FTP was active
+        val ip = _connectedIp.value
+        val code = _connectedAccessCode.value
+        val serial = _connectedSerialNumber.value
+        if (ip.isNotBlank() && code.isNotBlank() && serial.isNotBlank() &&
+            _connectionState.value != ConnectionState.Connected
+        ) {
+            // Reset state so connect() doesn't bail early
+            _connectionState.value = ConnectionState.Disconnected
+            _errorMessage.value = null
+            connect(ip, code, serial)
+        }
+    }
+
     override fun onCleared() {
         super.onCleared()
         ssdpClient.stopDiscovery()
+        closeFileManager()
         disconnect()
     }
 }

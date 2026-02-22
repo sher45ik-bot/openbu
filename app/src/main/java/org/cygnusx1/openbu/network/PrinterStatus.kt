@@ -38,3 +38,10 @@ data class SavedPrinter(
     val accessCode: String,
     val deviceName: String = "",
 )
+
+data class FtpFileEntry(
+    val name: String,
+    val size: Long,
+    val lastModified: String,
+    val isDirectory: Boolean,
+)
