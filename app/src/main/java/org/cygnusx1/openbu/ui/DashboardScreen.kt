@@ -81,7 +81,10 @@ fun DashboardScreen(
         Spacer(modifier = Modifier.height(48.dp))
 
         Box(modifier = Modifier.fillMaxWidth()) {
-            Row(modifier = Modifier.align(Alignment.CenterStart)) {
+            Row(
+                modifier = Modifier.align(Alignment.CenterStart),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
                 IconButton(onClick = onOpenPrinterSettings) {
                     Icon(
                         imageVector = Icons.Filled.Print,

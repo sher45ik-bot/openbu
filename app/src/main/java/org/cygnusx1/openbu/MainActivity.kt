@@ -170,6 +170,7 @@ class MainActivity : ComponentActivity() {
                             onNavigateTo = { viewModel.navigateTo(it) },
                             onNavigateUp = { viewModel.navigateUp() },
                             onDownloadFile = { viewModel.downloadFile(it) },
+                            onDeleteFile = { viewModel.deleteFtpFile(it) },
                             onUploadFile = { viewModel.uploadFile(it) },
                             onClearError = { viewModel.clearFtpError() },
                             onBack = {

@@ -166,6 +166,12 @@ class BambuFtpsClient(
         }
     }
 
+    suspend fun deleteFile(remotePath: String): Unit = withContext(Dispatchers.IO) {
+        sendCommand("DELE $remotePath")
+        val resp = readResponse()
+        if (resp.code != 250) throw IOException("DELE failed: ${resp.text}")
+    }
+
     fun cancelTransfer() {
         try { activeDataSocket?.close() } catch (_: Exception) {}
         activeDataSocket = null

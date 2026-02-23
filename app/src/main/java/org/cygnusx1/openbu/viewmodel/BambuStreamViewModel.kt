@@ -620,6 +620,25 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
         _ftpTransferProgress.value = null
     }
 
+    fun deleteFtpFile(entry: FtpFileEntry) {
+        val client = ftpClient ?: return
+        val currentPath = _currentFtpPath.value
+        val remotePath = if (currentPath.endsWith("/")) "$currentPath${entry.name}" else "$currentPath/${entry.name}"
+
+        viewModelScope.launch {
+            try {
+                client.deleteFile(remotePath)
+                // Refresh listing
+                val files = client.listDirectory(currentPath)
+                _fileList.value = files.sortedWith(compareByDescending<FtpFileEntry> { it.isDirectory }.thenBy { it.name })
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _ftpError.value = "Delete failed: ${e.message}"
+            }
+        }
+    }
+
     fun clearFtpTransferStatus() {
         _ftpTransferName.value = null
         _ftpTransferProgress.value = null
