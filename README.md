@@ -37,7 +37,7 @@ I am strongly considering adding this to the [Google Play Store](https://play.go
 * Auto-detects printers, and auto fills in the ip address and serial number. Hence only requires the access code.
 * Allows the user to add an external [RTSP](https://en.wikipedia.org/wiki/Real-Time_Streaming_Protocol) stream to the dashboard by entering a [RTSP](https://en.wikipedia.org/wiki/Real-Time_Streaming_Protocol) URL
 * Supports the P1 series video stream based on JPEGs
-* Support [RTSP](https://en.wikipedia.org/wiki/Real-Time_Streaming_Protocol) streams from P1 series internal cameras
+* Support [RTSP](https://en.wikipedia.org/wiki/Real-Time_Streaming_Protocol) streams from non-P1 series internal cameras
 * Supports toggling the chamber light for the P1 series
 * [AMS HT](https://us.store.bambulab.com/products/ams-ht?from=home_web_top_navigation), [AMS](https://us.store.bambulab.com/products/ams-multicolor-printing?from=home_web_top_navigation), and [AMS 2 Pro](https://us.store.bambulab.com/products/ams-2-pro?from=home_web_top_navigation)
   - Knows the correct number of trays per model
