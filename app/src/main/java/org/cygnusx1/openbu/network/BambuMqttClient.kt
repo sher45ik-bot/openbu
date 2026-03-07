@@ -176,6 +176,27 @@ class BambuMqttClient(
         }
     }
 
+    fun sendPrinterActionCommand(command: String) {
+        val out = socketOutput ?: return
+        val json = JSONObject().apply {
+            put("print", JSONObject().apply {
+                put("sequence_id", "0")
+                put("command", command)
+            })
+        }
+        try {
+            val topic = "device/$serialNumber/request"
+            if (debugLogging) Log.d(TAG, "Publishing printer action command=$command to $topic")
+            val packet = buildPublishPacket(topic, json.toString())
+            synchronized(out) {
+                out.write(packet)
+                out.flush()
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to publish printer action command", e)
+        }
+    }
+
     fun setSpeedLevel(level: Int) {
         val out = socketOutput ?: return
         val json = JSONObject().apply {

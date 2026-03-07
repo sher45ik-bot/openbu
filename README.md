@@ -44,6 +44,8 @@ I am strongly considering adding this to the [Google Play Store](https://play.go
   - Shows temperature, humidity, filament types, and filament colors
 * Shows job status including layers, time left, estimated time, job name, and percentage of job done
 * Shows status of the nozzle, bed, part fan, aux fan, and chamber fan
+* Speed control
+* Pause/Resume and Stop
 
 [Feature requests](github.com/cygnusx-1-org/openbu/issues) are welcome.
 
@@ -58,7 +60,6 @@ I am strongly considering adding this to the [Google Play Store](https://play.go
 * Better support multiple printers
 * Better overall support for non-P1 series printers
 * Nozzle controls
-* Speed control
 * Support build farms with many printers
 
 ## Donations

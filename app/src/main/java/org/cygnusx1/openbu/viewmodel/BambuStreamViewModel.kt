@@ -404,6 +404,12 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
         }
     }
 
+    fun sendPrinterActionCommand(command: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            mqttClient?.sendPrinterActionCommand(command)
+        }
+    }
+
     private fun cleanupConnections() {
         streamJob?.cancel()
         streamJob = null

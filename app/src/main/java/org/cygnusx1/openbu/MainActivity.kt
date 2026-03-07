@@ -337,6 +337,7 @@ class MainActivity : ComponentActivity() {
                                 showTimelapse = true
                             },
                             onSetSpeedLevel = { viewModel.setSpeedLevel(it) },
+                            onPrinterActionCommand = { viewModel.sendPrinterActionCommand(it) },
                         )
                     }
                     else -> {

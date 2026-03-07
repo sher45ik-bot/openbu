@@ -25,7 +25,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Print
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Speed
+import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
@@ -80,6 +84,7 @@ fun DashboardScreen(
     onOpenFileManager: () -> Unit,
     onOpenTimelapse: () -> Unit,
     onSetSpeedLevel: (Int) -> Unit,
+    onPrinterActionCommand: (String) -> Unit,
 ) {
     var showSpeedDialog by remember { mutableStateOf(false) }
 
@@ -253,7 +258,10 @@ fun DashboardScreen(
         Spacer(modifier = Modifier.height(8.dp))
 
         // Status
-        PrintStatusCard(printerStatus = printerStatus)
+        PrintStatusCard(
+            printerStatus = printerStatus,
+            onPrinterActionCommand = onPrinterActionCommand,
+        )
 
         Spacer(modifier = Modifier.height(8.dp))
 
@@ -314,7 +322,10 @@ fun DashboardScreen(
 }
 
 @Composable
-private fun PrintStatusCard(printerStatus: PrinterStatus) {
+private fun PrintStatusCard(
+    printerStatus: PrinterStatus,
+    onPrinterActionCommand: (String) -> Unit,
+) {
     val stateLabel = when (printerStatus.gcodeState) {
         "RUNNING" -> "Printing"
         "PAUSE" -> "Paused"
@@ -421,6 +432,53 @@ private fun PrintStatusCard(printerStatus: PrinterStatus) {
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface,
                         )
+                    }
+                }
+
+                // Pause / Resume / Stop buttons
+                Spacer(modifier = Modifier.height(10.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    if (printerStatus.gcodeState == "RUNNING") {
+                        FilledTonalButton(
+                            onClick = { onPrinterActionCommand("pause") },
+                            modifier = Modifier.weight(1f),
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Pause,
+                                contentDescription = "Pause",
+                                modifier = Modifier.size(18.dp),
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Pause")
+                        }
+                    } else {
+                        FilledTonalButton(
+                            onClick = { onPrinterActionCommand("resume") },
+                            modifier = Modifier.weight(1f),
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.PlayArrow,
+                                contentDescription = "Resume",
+                                modifier = Modifier.size(18.dp),
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Resume")
+                        }
+                    }
+                    FilledTonalButton(
+                        onClick = { onPrinterActionCommand("stop") },
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Stop,
+                            contentDescription = "Stop",
+                            modifier = Modifier.size(18.dp),
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Stop")
                     }
                 }
             }
