@@ -47,6 +47,7 @@ class BambuMqttClient(
 
     private var socket: SSLSocket? = null
     private var socketOutput: OutputStream? = null
+    private val amsModelMap = mutableMapOf<String, String>()
 
     fun connect(scope: CoroutineScope) {
         scope.launch(Dispatchers.IO) {
@@ -98,8 +99,9 @@ class BambuMqttClient(
                     if (debugLogging) Log.d(TAG, "SUBACK received")
                 }
 
-                // Request current status
+                // Request current status and version info
                 requestStatus()
+                requestVersion()
 
                 // Read loop — process incoming MQTT packets
                 while (coroutineContext.isActive) {
@@ -240,11 +242,54 @@ class BambuMqttClient(
         }
     }
 
+    private fun requestVersion() {
+        val out = socketOutput ?: return
+        val json = JSONObject().apply {
+            put("info", JSONObject().apply {
+                put("sequence_id", "0")
+                put("command", "get_version")
+            })
+        }
+        try {
+            val topic = "device/$serialNumber/request"
+            if (debugLogging) Log.d(TAG, "Requesting get_version on $topic")
+            val packet = buildPublishPacket(topic, json.toString())
+            synchronized(out) {
+                out.write(packet)
+                out.flush()
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to publish get_version", e)
+        }
+    }
+
+    private fun parseVersionResponse(info: JSONObject) {
+        val modules = info.optJSONArray("module") ?: return
+        for (i in 0 until modules.length()) {
+            val module = modules.getJSONObject(i)
+            val name = module.optString("name", "")
+            val productName = module.optString("product_name", "")
+            if (productName.isEmpty()) continue
+            // name is like "ams/2", "n3f/0", "n3s/128" — extract id after "/"
+            val slashIndex = name.indexOf('/')
+            if (slashIndex < 0) continue
+            val amsId = name.substring(slashIndex + 1)
+            amsModelMap[amsId] = productName
+            if (debugLogging) Log.d(TAG, "AMS model: id=$amsId -> $productName")
+        }
+    }
+
     private fun parseLightStatus(payload: String) {
         val root = JSONObject(payload)
         if (debugLogging) {
             Log.d(TAG, "MQTT JSON keys: ${root.keys().asSequence().toList()}")
         }
+
+        val info = root.optJSONObject("info")
+        if (info != null && info.optString("command") == "get_version") {
+            parseVersionResponse(info)
+        }
+
         val print = root.optJSONObject("print") ?: return
 
         parsePrinterStatus(print)
@@ -328,13 +373,7 @@ class BambuMqttClient(
                         }
                     }
                     val amsId = amsObj.optString("id", "0")
-                    val amsIdNum = amsId.toIntOrNull() ?: 0
-                    val hasDryTime = amsObj.has("dry_time")
-                    val amsModel = when {
-                        amsIdNum >= 128 -> "AMS-HT"
-                        hasDryTime -> "AMS-2-PRO"
-                        else -> "AMS"
-                    }
+                    val amsModel = amsModelMap[amsId] ?: "---"
                     units.add(AmsUnit(
                         id = amsId,
                         model = amsModel,
