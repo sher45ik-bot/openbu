@@ -2,6 +2,7 @@ package org.cygnusx1.openbu
 
 import android.content.pm.ActivityInfo
 import android.os.Bundle
+import android.view.KeyEvent
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
@@ -42,12 +43,42 @@ import org.cygnusx1.openbu.viewmodel.BambuStreamViewModel
 import org.cygnusx1.openbu.viewmodel.ConnectionState
 
 class MainActivity : ComponentActivity() {
+    private var viewModelRef: BambuStreamViewModel? = null
+    private var volumeDownPressTime = 0L
+
+    override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
+        if (keyCode == KeyEvent.KEYCODE_VOLUME_DOWN) {
+            if (event?.repeatCount == 0) {
+                volumeDownPressTime = System.currentTimeMillis()
+            }
+            val held = System.currentTimeMillis() - volumeDownPressTime
+            val vm = viewModelRef
+            if (held >= 1500 && vm != null &&
+                vm.connectionState.value != ConnectionState.Connected
+            ) {
+                vm.enterDemoMode()
+                return true
+            }
+            return true
+        }
+        return super.onKeyDown(keyCode, event)
+    }
+
+    override fun onKeyUp(keyCode: Int, event: KeyEvent?): Boolean {
+        if (keyCode == KeyEvent.KEYCODE_VOLUME_DOWN) {
+            volumeDownPressTime = 0L
+            return true
+        }
+        return super.onKeyUp(keyCode, event)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
         setContent {
             val viewModel: BambuStreamViewModel = viewModel()
+            viewModelRef = viewModel
             val forceDarkMode by viewModel.forceDarkMode.collectAsState()
             val customBgColor by viewModel.customBgColor.collectAsState()
             val connectionState by viewModel.connectionState.collectAsState()
@@ -305,7 +336,8 @@ class MainActivity : ComponentActivity() {
                             window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
                         }
                         val dashboardCustomName by viewModel.customPrinterName.collectAsState()
-                        val printerName = dashboardCustomName.ifBlank {
+                        val isDemoMode by viewModel.demoMode.collectAsState()
+                        val printerName = if (isDemoMode) "demo-printer" else dashboardCustomName.ifBlank {
                             discoveredPrinters.firstOrNull { it.serialNumber == connectedSerialNumber }?.deviceName
                                 ?: savedPrinters.firstOrNull { it.serialNumber == connectedSerialNumber }?.deviceName
                                 ?: ""
