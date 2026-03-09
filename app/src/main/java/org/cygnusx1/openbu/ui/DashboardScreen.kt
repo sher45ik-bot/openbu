@@ -10,6 +10,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.MenuAnchorType
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
@@ -20,8 +25,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -48,7 +51,6 @@ import kotlinx.coroutines.launch
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -109,16 +111,16 @@ fun DashboardScreen(
 ) {
     val isEnclosed = !serialNumber.startsWith("030")
     var showSpeedDialog by remember { mutableStateOf(false) }
-    // (amsId, trayId, currentType, currentColor)
-    var filamentEditTarget by remember { mutableStateOf<Triple<Int, Int, Pair<String, String>>?>(null) }
+    var filamentEditTarget by remember { mutableStateOf<FilamentEditTarget?>(null) }
 
-    filamentEditTarget?.let { (amsId, trayId, current) ->
+    filamentEditTarget?.let { target ->
         FilamentEditDialog(
-            currentType = current.first,
-            currentColor = current.second,
+            currentType = target.type,
+            currentColor = target.color,
+            currentTrayInfoIdx = target.trayInfoIdx,
             filaments = filaments,
             onConfirm = { profile, colorHex ->
-                onSetFilament(amsId, trayId, profile, colorHex)
+                onSetFilament(target.amsId, target.trayId, profile, colorHex)
                 filamentEditTarget = null
             },
             onDismiss = { filamentEditTarget = null },
@@ -392,10 +394,12 @@ fun DashboardScreen(
         // AMS cards
         for (amsUnit in printerStatus.amsUnits) {
             AmsCard(amsUnit) { tray ->
-                filamentEditTarget = Triple(
-                    amsUnit.id.toIntOrNull() ?: 0,
-                    tray.id.toIntOrNull() ?: 0,
-                    Pair(tray.trayType, tray.trayColor),
+                filamentEditTarget = FilamentEditTarget(
+                    amsId = amsUnit.id.toIntOrNull() ?: 0,
+                    trayId = tray.id.toIntOrNull() ?: 0,
+                    type = tray.trayType,
+                    color = tray.trayColor,
+                    trayInfoIdx = tray.trayInfoIdx,
                 )
             }
             Spacer(modifier = Modifier.height(8.dp))
@@ -403,10 +407,12 @@ fun DashboardScreen(
 
         // External spool
         ExternalSpoolCard(printerStatus.vtTray) {
-            filamentEditTarget = Triple(
-                255,
-                254,
-                Pair(printerStatus.vtTray?.trayType ?: "", printerStatus.vtTray?.trayColor ?: ""),
+            filamentEditTarget = FilamentEditTarget(
+                amsId = 255,
+                trayId = 254,
+                type = printerStatus.vtTray?.trayType ?: "",
+                color = printerStatus.vtTray?.trayColor ?: "",
+                trayInfoIdx = printerStatus.vtTray?.trayInfoIdx ?: "",
             )
         }
         Spacer(modifier = Modifier.height(8.dp))
@@ -772,18 +778,22 @@ private val FilamentPresetColors = listOf(
     "Cyan" to Color(0xFF00BCD4),
 )
 
-@OptIn(ExperimentalLayoutApi::class)
+@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
 private fun FilamentEditDialog(
     currentType: String,
     currentColor: String,
+    currentTrayInfoIdx: String,
     filaments: List<FilamentProfile>,
     onConfirm: (FilamentProfile, String) -> Unit,
     onDismiss: () -> Unit,
 ) {
     val types = remember(filaments) { filaments.map { it.type }.distinct().sorted() }
-    var selectedType by remember { mutableStateOf(currentType.ifEmpty { types.firstOrNull() ?: "" }) }
-    var selectedProfile by remember { mutableStateOf<FilamentProfile?>(null) }
+    val initialProfile = remember { filaments.find { it.filamentId == currentTrayInfoIdx } }
+    var selectedType by remember {
+        mutableStateOf(initialProfile?.type ?: currentType.ifEmpty { types.firstOrNull() ?: "" })
+    }
+    var selectedProfile by remember { mutableStateOf(initialProfile) }
     var selectedColorArgb by remember {
         mutableStateOf(
             if (currentColor.length >= 6) {
@@ -803,61 +813,86 @@ private fun FilamentEditDialog(
     }
 
     val filtered = remember(filaments, selectedType) {
-        filaments.filter { it.type == selectedType }
+        filaments.filter { it.type == selectedType }.sortedBy { it.name }
     }
 
-    // Auto-select first profile when type changes
+    // Auto-select first profile when type changes (but not on initial load if we matched by trayInfoIdx)
     if (selectedProfile == null || selectedProfile!!.type != selectedType) {
         selectedProfile = filtered.firstOrNull()
     }
+
+    var typeExpanded by remember { mutableStateOf(false) }
+    var profileExpanded by remember { mutableStateOf(false) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Set Filament") },
         text = {
             Column {
-                // Type filter chips
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                // Type dropdown
+                ExposedDropdownMenuBox(
+                    expanded = typeExpanded,
+                    onExpandedChange = { typeExpanded = it },
                 ) {
-                    for (type in types) {
-                        FilterChip(
-                            selected = type == selectedType,
-                            onClick = { selectedType = type },
-                            label = { Text(type, style = MaterialTheme.typography.labelSmall) },
-                        )
+                    OutlinedTextField(
+                        value = selectedType,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Type") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = typeExpanded) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .menuAnchor(MenuAnchorType.PrimaryNotEditable),
+                    )
+                    ExposedDropdownMenu(
+                        expanded = typeExpanded,
+                        onDismissRequest = { typeExpanded = false },
+                    ) {
+                        for (type in types) {
+                            DropdownMenuItem(
+                                text = { Text(type) },
+                                onClick = {
+                                    selectedType = type
+                                    typeExpanded = false
+                                },
+                            )
+                        }
                     }
                 }
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // Filament list
-                LazyColumn(modifier = Modifier.height(150.dp)) {
-                    items(filtered) { profile ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { selectedProfile = profile }
-                                .padding(vertical = 2.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            RadioButton(
-                                selected = selectedProfile == profile,
-                                onClick = { selectedProfile = profile },
+                // Filament dropdown
+                ExposedDropdownMenuBox(
+                    expanded = profileExpanded,
+                    onExpandedChange = { profileExpanded = it },
+                ) {
+                    OutlinedTextField(
+                        value = selectedProfile?.let {
+                            "${it.name} (${it.nozzleTempMin}-${it.nozzleTempMax}\u00B0C)"
+                        } ?: "",
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Filament") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = profileExpanded) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .menuAnchor(MenuAnchorType.PrimaryNotEditable),
+                    )
+                    ExposedDropdownMenu(
+                        expanded = profileExpanded,
+                        onDismissRequest = { profileExpanded = false },
+                    ) {
+                        for (profile in filtered) {
+                            DropdownMenuItem(
+                                text = {
+                                    Text("${profile.name} (${profile.nozzleTempMin}-${profile.nozzleTempMax}\u00B0C)")
+                                },
+                                onClick = {
+                                    selectedProfile = profile
+                                    profileExpanded = false
+                                },
                             )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Column {
-                                Text(
-                                    text = profile.name,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                )
-                                Text(
-                                    text = "${profile.nozzleTempMin}-${profile.nozzleTempMax}\u00B0C",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
                         }
                     }
                 }
@@ -993,6 +1028,14 @@ private fun SpeedLevelDialog(
         },
     )
 }
+
+private data class FilamentEditTarget(
+    val amsId: Int,
+    val trayId: Int,
+    val type: String,
+    val color: String,
+    val trayInfoIdx: String,
+)
 
 private fun parseHexColor(hex: String): Color {
     if (hex.length < 6) return Color.Gray

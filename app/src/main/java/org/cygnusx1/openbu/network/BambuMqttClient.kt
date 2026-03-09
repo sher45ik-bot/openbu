@@ -411,11 +411,13 @@ class BambuMqttClient(
         if (vtTrayObj != null) {
             val trayType = vtTrayObj.optString("tray_type", "")
             val trayColor = vtTrayObj.optString("tray_color", "")
+            val trayInfoIdx = vtTrayObj.optString("tray_info_idx", "")
             vtTray = if (trayType.isNotEmpty()) {
                 AmsTray(
                     id = vtTrayObj.optString("id", "254"),
                     trayType = trayType,
                     trayColor = trayColor,
+                    trayInfoIdx = trayInfoIdx,
                 )
             } else {
                 null
@@ -438,6 +440,7 @@ class BambuMqttClient(
                                 id = trayObj.optString("id", ""),
                                 trayType = trayObj.optString("tray_type", ""),
                                 trayColor = trayObj.optString("tray_color", ""),
+                                trayInfoIdx = trayObj.optString("tray_info_idx", ""),
                             ))
                         }
                     }
