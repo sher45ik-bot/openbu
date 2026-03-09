@@ -317,6 +317,7 @@ class MainActivity : ComponentActivity() {
                             isMqttConnected = isMqttConnected,
                             printerStatus = printerStatus,
                             printerName = printerName,
+                            serialNumber = connectedSerialNumber,
                             showMainStream = showMainStream,
                             rtspPlayer = rtspPlayer,
                             onToggleLight = { viewModel.toggleLight(it) },
