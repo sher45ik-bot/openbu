@@ -451,10 +451,20 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
 
     fun disconnect() {
         userDisconnected = true
+        _demoMode.value = false
         cleanupConnections()
         stopForegroundService()
         _errorMessage.value = null
         _connectionState.value = ConnectionState.Disconnected
+    }
+
+    private val _demoMode = MutableStateFlow(false)
+    val demoMode: StateFlow<Boolean> = _demoMode.asStateFlow()
+
+    fun enterDemoMode() {
+        _demoMode.value = true
+        _connectedSerialNumber.value = "DEMO000000000"
+        _connectionState.value = ConnectionState.Connected
     }
 
     fun startDiscovery() {
