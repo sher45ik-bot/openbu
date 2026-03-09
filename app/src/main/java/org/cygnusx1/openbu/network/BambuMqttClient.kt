@@ -288,6 +288,16 @@ class BambuMqttClient(
         val info = root.optJSONObject("info")
         if (info != null && info.optString("command") == "get_version") {
             parseVersionResponse(info)
+            // Patch any already-loaded AMS units with the now-known model names
+            val cur = _printerStatus.value
+            if (cur.amsUnits.isNotEmpty() && amsModelMap.isNotEmpty()) {
+                _printerStatus.value = cur.copy(
+                    amsUnits = cur.amsUnits.map { unit ->
+                        val model = amsModelMap[unit.id]
+                        if (model != null) unit.copy(model = model) else unit
+                    }
+                )
+            }
         }
 
         val print = root.optJSONObject("print") ?: return
