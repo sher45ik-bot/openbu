@@ -4,6 +4,7 @@ data class AmsTray(
     val id: String = "",
     val trayType: String = "",
     val trayColor: String = "",
+    val trayInfoIdx: String = "",
 )
 
 data class AmsUnit(

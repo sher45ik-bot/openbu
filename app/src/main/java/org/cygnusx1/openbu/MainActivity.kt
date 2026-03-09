@@ -29,6 +29,7 @@ import java.security.cert.X509Certificate
 import javax.net.ssl.SSLContext
 import javax.net.ssl.TrustManager
 import javax.net.ssl.X509TrustManager
+import org.cygnusx1.openbu.data.FilamentRepository
 import org.cygnusx1.openbu.ui.ConnectionScreen
 import org.cygnusx1.openbu.ui.DashboardScreen
 import org.cygnusx1.openbu.ui.FileManagerScreen
@@ -335,6 +336,7 @@ class MainActivity : ComponentActivity() {
                             viewModel.disconnect()
                             window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
                         }
+                        val filamentCatalog = remember { FilamentRepository.getFilaments(this@MainActivity) }
                         val dashboardCustomName by viewModel.customPrinterName.collectAsState()
                         val isDemoMode by viewModel.demoMode.collectAsState()
                         val printerName = if (isDemoMode) "demo-printer" else dashboardCustomName.ifBlank {
@@ -367,6 +369,10 @@ class MainActivity : ComponentActivity() {
                             },
                             onSetSpeedLevel = { viewModel.setSpeedLevel(it) },
                             onPrinterActionCommand = { viewModel.sendPrinterActionCommand(it) },
+                            filaments = filamentCatalog,
+                            onSetFilament = { amsId, trayId, profile, colorHex ->
+                                viewModel.setFilament(amsId, trayId, profile, colorHex)
+                            },
                         )
                     }
                     else -> {

@@ -1,0 +1,906 @@
+[
+  {
+    "filament_id": "GFB00",
+    "name": "Bambu ABS",
+    "type": "ABS",
+    "nozzle_temp_min": 240,
+    "nozzle_temp_max": 280,
+    "setting_id": "GFSB00"
+  },
+  {
+    "filament_id": "GFS06",
+    "name": "Bambu Support for ABS",
+    "type": "ABS",
+    "nozzle_temp_min": 240,
+    "nozzle_temp_max": 270,
+    "setting_id": "GFSS06_00"
+  },
+  {
+    "filament_id": "GFB99",
+    "name": "Generic ABS",
+    "type": "ABS",
+    "nozzle_temp_min": 240,
+    "nozzle_temp_max": 280,
+    "setting_id": "GFSB99"
+  },
+  {
+    "filament_id": "GFB60",
+    "name": "PolyLite ABS",
+    "type": "ABS",
+    "nozzle_temp_min": 240,
+    "nozzle_temp_max": 280,
+    "setting_id": "GFSB60_00"
+  },
+  {
+    "filament_id": "GFB50",
+    "name": "Bambu ABS-GF",
+    "type": "ABS-GF",
+    "nozzle_temp_min": 240,
+    "nozzle_temp_max": 280,
+    "setting_id": "GFSB50_01"
+  },
+  {
+    "filament_id": "GFR00",
+    "name": "FusRock ABS-GF",
+    "type": "ABS-GF",
+    "nozzle_temp_min": 240,
+    "nozzle_temp_max": 280,
+    "setting_id": "GFSR00_05"
+  },
+  {
+    "filament_id": "GFB01",
+    "name": "Bambu ASA",
+    "type": "ASA",
+    "nozzle_temp_min": 240,
+    "nozzle_temp_max": 280,
+    "setting_id": "GFSB01_01"
+  },
+  {
+    "filament_id": "GFB98",
+    "name": "Generic ASA",
+    "type": "ASA",
+    "nozzle_temp_min": 240,
+    "nozzle_temp_max": 280,
+    "setting_id": "GFSB98_00"
+  },
+  {
+    "filament_id": "GFB61",
+    "name": "PolyLite ASA",
+    "type": "ASA",
+    "nozzle_temp_min": 240,
+    "nozzle_temp_max": 280,
+    "setting_id": "GFSB61_04"
+  },
+  {
+    "filament_id": "GFB02",
+    "name": "Bambu ASA-Aero",
+    "type": "ASA-Aero",
+    "nozzle_temp_min": 240,
+    "nozzle_temp_max": 280,
+    "setting_id": "GFSB02_00"
+  },
+  {
+    "filament_id": "GFB51",
+    "name": "Bambu ASA-CF",
+    "type": "ASA-CF",
+    "nozzle_temp_min": 250,
+    "nozzle_temp_max": 280,
+    "setting_id": "GFSB51_01"
+  },
+  {
+    "filament_id": "GFS97",
+    "name": "Generic BVOH",
+    "type": "BVOH",
+    "nozzle_temp_min": 190,
+    "nozzle_temp_max": 240,
+    "setting_id": "GFSS97_00"
+  },
+  {
+    "filament_id": "GFR99",
+    "name": "Generic EVA",
+    "type": "EVA",
+    "nozzle_temp_min": 175,
+    "nozzle_temp_max": 220,
+    "setting_id": "GFSR99_00"
+  },
+  {
+    "filament_id": "GFS98",
+    "name": "Generic HIPS",
+    "type": "HIPS",
+    "nozzle_temp_min": 220,
+    "nozzle_temp_max": 270,
+    "setting_id": "GFSS98_00"
+  },
+  {
+    "filament_id": "GFS03",
+    "name": "Bambu Support For PA/PET",
+    "type": "PA",
+    "nozzle_temp_min": 260,
+    "nozzle_temp_max": 300,
+    "setting_id": "GFSS03_00"
+  },
+  {
+    "filament_id": "GFS01",
+    "name": "Bambu Support G",
+    "type": "PA",
+    "nozzle_temp_min": 260,
+    "nozzle_temp_max": 300,
+    "setting_id": "GFSS01"
+  },
+  {
+    "filament_id": "GFL53",
+    "name": "Fiberon PA612-CF",
+    "type": "PA",
+    "nozzle_temp_min": 260,
+    "nozzle_temp_max": 300,
+    "setting_id": "GFSL53_00"
+  },
+  {
+    "filament_id": "GFN03",
+    "name": "Bambu PA-CF",
+    "type": "PA-CF",
+    "nozzle_temp_min": 260,
+    "nozzle_temp_max": 300,
+    "setting_id": "GFSN00"
+  },
+  {
+    "filament_id": "GFN04",
+    "name": "Bambu PAHT-CF",
+    "type": "PA-CF",
+    "nozzle_temp_min": 260,
+    "nozzle_temp_max": 300,
+    "setting_id": "GFSN04"
+  },
+  {
+    "filament_id": "GFL52",
+    "name": "Fiberon PA12-CF",
+    "type": "PA-CF",
+    "nozzle_temp_min": 260,
+    "nozzle_temp_max": 300,
+    "setting_id": "GFSL52_00"
+  },
+  {
+    "filament_id": "GFN08",
+    "name": "Bambu PA6-GF",
+    "type": "PA-GF",
+    "nozzle_temp_min": 260,
+    "nozzle_temp_max": 300,
+    "setting_id": "GFSN08_00"
+  },
+  {
+    "filament_id": "GFL51",
+    "name": "Fiberon PA6-GF",
+    "type": "PA-GF",
+    "nozzle_temp_min": 280,
+    "nozzle_temp_max": 300,
+    "setting_id": "GFSL51_00"
+  },
+  {
+    "filament_id": "GFN05",
+    "name": "Bambu PA6-CF",
+    "type": "PA6-CF",
+    "nozzle_temp_min": 260,
+    "nozzle_temp_max": 300,
+    "setting_id": "GFSN05_02"
+  },
+  {
+    "filament_id": "GFL50",
+    "name": "Fiberon PA6-CF",
+    "type": "PA6-CF",
+    "nozzle_temp_min": 280,
+    "nozzle_temp_max": 300,
+    "setting_id": "GFSL50_00"
+  },
+  {
+    "filament_id": "GFC00",
+    "name": "Bambu PC",
+    "type": "PC",
+    "nozzle_temp_min": 260,
+    "nozzle_temp_max": 290,
+    "setting_id": "GFSC00_04"
+  },
+  {
+    "filament_id": "GFC01",
+    "name": "Bambu PC FR",
+    "type": "PC",
+    "nozzle_temp_min": 260,
+    "nozzle_temp_max": 290,
+    "setting_id": "GFSC01_08"
+  },
+  {
+    "filament_id": "GFC99",
+    "name": "Generic PC",
+    "type": "PC",
+    "nozzle_temp_min": 260,
+    "nozzle_temp_max": 290,
+    "setting_id": "GFSC99_01"
+  },
+  {
+    "filament_id": "GFG97",
+    "name": "Generic PCTG",
+    "type": "PCTG",
+    "nozzle_temp_min": 240,
+    "nozzle_temp_max": 270,
+    "setting_id": "GFSG97_00"
+  },
+  {
+    "filament_id": "GFP99",
+    "name": "Generic PE",
+    "type": "PE",
+    "nozzle_temp_min": 175,
+    "nozzle_temp_max": 220,
+    "setting_id": "GFSP99_00"
+  },
+  {
+    "filament_id": "GFP98",
+    "name": "Generic PE-CF",
+    "type": "PE-CF",
+    "nozzle_temp_min": 175,
+    "nozzle_temp_max": 220,
+    "setting_id": "GFSP98_00"
+  },
+  {
+    "filament_id": "GFT01",
+    "name": "Bambu PET-CF",
+    "type": "PET-CF",
+    "nozzle_temp_min": 260,
+    "nozzle_temp_max": 290,
+    "setting_id": "GFST01"
+  },
+  {
+    "filament_id": "GFL54",
+    "name": "Fiberon PET-CF",
+    "type": "PET-CF",
+    "nozzle_temp_min": 270,
+    "nozzle_temp_max": 300,
+    "setting_id": "GFSL54_00"
+  },
+  {
+    "filament_id": "GFG00",
+    "name": "Bambu PETG Basic",
+    "type": "PETG",
+    "nozzle_temp_min": 230,
+    "nozzle_temp_max": 270,
+    "setting_id": "GFSG00_02"
+  },
+  {
+    "filament_id": "GFG02",
+    "name": "Bambu PETG HF",
+    "type": "PETG",
+    "nozzle_temp_min": 230,
+    "nozzle_temp_max": 270,
+    "setting_id": "GFSG02_00"
+  },
+  {
+    "filament_id": "GFG01",
+    "name": "Bambu PETG Translucent",
+    "type": "PETG",
+    "nozzle_temp_min": 230,
+    "nozzle_temp_max": 270,
+    "setting_id": "GFSG01_00"
+  },
+  {
+    "filament_id": "GFL06",
+    "name": "Fiberon PETG-ESD",
+    "type": "PETG",
+    "nozzle_temp_min": 250,
+    "nozzle_temp_max": 290,
+    "setting_id": "GFSL06_00"
+  },
+  {
+    "filament_id": "GFG99",
+    "name": "Generic PETG",
+    "type": "PETG",
+    "nozzle_temp_min": 220,
+    "nozzle_temp_max": 270,
+    "setting_id": "GFSG99"
+  },
+  {
+    "filament_id": "GFG96",
+    "name": "Generic PETG HF",
+    "type": "PETG",
+    "nozzle_temp_min": 220,
+    "nozzle_temp_max": 270,
+    "setting_id": "GFSG96_02"
+  },
+  {
+    "filament_id": "GFG60",
+    "name": "PolyLite PETG",
+    "type": "PETG",
+    "nozzle_temp_min": 220,
+    "nozzle_temp_max": 260,
+    "setting_id": "GFSG60_02"
+  },
+  {
+    "filament_id": "GFSNL08",
+    "name": "SUNLU PETG",
+    "type": "PETG",
+    "nozzle_temp_min": 230,
+    "nozzle_temp_max": 280,
+    "setting_id": "GFSNLS08_01"
+  },
+  {
+    "filament_id": "GFG50",
+    "name": "Bambu PETG-CF",
+    "type": "PETG-CF",
+    "nozzle_temp_min": 240,
+    "nozzle_temp_max": 270,
+    "setting_id": "GFSG50_02"
+  },
+  {
+    "filament_id": "GFL55",
+    "name": "Fiberon PETG-rCF",
+    "type": "PETG-CF",
+    "nozzle_temp_min": 240,
+    "nozzle_temp_max": 270,
+    "setting_id": "GFSL55_00"
+  },
+  {
+    "filament_id": "GFG98",
+    "name": "Generic PETG-CF",
+    "type": "PETG-CF",
+    "nozzle_temp_min": 240,
+    "nozzle_temp_max": 270,
+    "setting_id": "GFSG50"
+  },
+  {
+    "filament_id": "GFR98",
+    "name": "Generic PHA",
+    "type": "PHA",
+    "nozzle_temp_min": 190,
+    "nozzle_temp_max": 240,
+    "setting_id": "GFSR98_00"
+  },
+  {
+    "filament_id": "GFA00",
+    "name": "Bambu PLA Basic",
+    "type": "PLA",
+    "nozzle_temp_min": 190,
+    "nozzle_temp_max": 240,
+    "setting_id": "GFSA00"
+  },
+  {
+    "filament_id": "GFA13",
+    "name": "Bambu PLA Dynamic",
+    "type": "PLA",
+    "nozzle_temp_min": 190,
+    "nozzle_temp_max": 240,
+    "setting_id": "GFSA13_01"
+  },
+  {
+    "filament_id": "GFA15",
+    "name": "Bambu PLA Galaxy",
+    "type": "PLA",
+    "nozzle_temp_min": 190,
+    "nozzle_temp_max": 240,
+    "setting_id": "GFSA15_01"
+  },
+  {
+    "filament_id": "GFA12",
+    "name": "Bambu PLA Glow",
+    "type": "PLA",
+    "nozzle_temp_min": 190,
+    "nozzle_temp_max": 240,
+    "setting_id": "GFSA12_00"
+  },
+  {
+    "filament_id": "GFA03",
+    "name": "Bambu PLA Impact",
+    "type": "PLA",
+    "nozzle_temp_min": 190,
+    "nozzle_temp_max": 240,
+    "setting_id": "GFSA03"
+  },
+  {
+    "filament_id": "GFA07",
+    "name": "Bambu PLA Marble",
+    "type": "PLA",
+    "nozzle_temp_min": 190,
+    "nozzle_temp_max": 240,
+    "setting_id": "GFSA07_00"
+  },
+  {
+    "filament_id": "GFA01",
+    "name": "Bambu PLA Matte",
+    "type": "PLA",
+    "nozzle_temp_min": 190,
+    "nozzle_temp_max": 240,
+    "setting_id": "GFSA01_01"
+  },
+  {
+    "filament_id": "GFA02",
+    "name": "Bambu PLA Metal",
+    "type": "PLA",
+    "nozzle_temp_min": 190,
+    "nozzle_temp_max": 240,
+    "setting_id": "GFSA02_01"
+  },
+  {
+    "filament_id": "GFA05",
+    "name": "Bambu PLA Silk",
+    "type": "PLA",
+    "nozzle_temp_min": 190,
+    "nozzle_temp_max": 240,
+    "setting_id": "GFSA05_00"
+  },
+  {
+    "filament_id": "GFA06",
+    "name": "Bambu PLA Silk+",
+    "type": "PLA",
+    "nozzle_temp_min": 190,
+    "nozzle_temp_max": 240,
+    "setting_id": "GFSA06_01"
+  },
+  {
+    "filament_id": "GFA08",
+    "name": "Bambu PLA Sparkle",
+    "type": "PLA",
+    "nozzle_temp_min": 190,
+    "nozzle_temp_max": 240,
+    "setting_id": "GFSA08_00"
+  },
+  {
+    "filament_id": "GFA09",
+    "name": "Bambu PLA Tough",
+    "type": "PLA",
+    "nozzle_temp_min": 190,
+    "nozzle_temp_max": 240,
+    "setting_id": "GFSA09_02"
+  },
+  {
+    "filament_id": "GFA16",
+    "name": "Bambu PLA Wood",
+    "type": "PLA",
+    "nozzle_temp_min": 190,
+    "nozzle_temp_max": 240,
+    "setting_id": "GFSA16_01"
+  },
+  {
+    "filament_id": "GFS02",
+    "name": "Bambu Support For PLA",
+    "type": "PLA",
+    "nozzle_temp_min": 190,
+    "nozzle_temp_max": 240,
+    "setting_id": "GFSS02_01"
+  },
+  {
+    "filament_id": "GFS05",
+    "name": "Bambu Support For PLA/PETG",
+    "type": "PLA",
+    "nozzle_temp_min": 190,
+    "nozzle_temp_max": 240,
+    "setting_id": "GFSS05_02"
+  },
+  {
+    "filament_id": "GFS00",
+    "name": "Bambu Support W",
+    "type": "PLA",
+    "nozzle_temp_min": 190,
+    "nozzle_temp_max": 240,
+    "setting_id": "GFSS00"
+  },
+  {
+    "filament_id": "GFL99",
+    "name": "Generic PLA",
+    "type": "PLA",
+    "nozzle_temp_min": 190,
+    "nozzle_temp_max": 240,
+    "setting_id": "GFSL99_00"
+  },
+  {
+    "filament_id": "GFL95",
+    "name": "Generic PLA High Speed",
+    "type": "PLA",
+    "nozzle_temp_min": 190,
+    "nozzle_temp_max": 240,
+    "setting_id": "GFSL95_00"
+  },
+  {
+    "filament_id": "GFL96",
+    "name": "Generic PLA Silk",
+    "type": "PLA",
+    "nozzle_temp_min": 190,
+    "nozzle_temp_max": 240,
+    "setting_id": "GFSL99_01"
+  },
+  {
+    "filament_id": "GFL05",
+    "name": "Overture Matte PLA",
+    "type": "PLA",
+    "nozzle_temp_min": 190,
+    "nozzle_temp_max": 240,
+    "setting_id": "GFSL05_00"
+  },
+  {
+    "filament_id": "GFL04",
+    "name": "Overture PLA",
+    "type": "PLA",
+    "nozzle_temp_min": 190,
+    "nozzle_temp_max": 240,
+    "setting_id": "GFSL04_03"
+  },
+  {
+    "filament_id": "GFOT001",
+    "name": "Overture PLA Pro",
+    "type": "PLA",
+    "nozzle_temp_min": 190,
+    "nozzle_temp_max": 220,
+    "setting_id": "GFOT001_04"
+  },
+  {
+    "filament_id": "GFPM016",
+    "name": "Panchroma CoPE",
+    "type": "PLA",
+    "nozzle_temp_min": 190,
+    "nozzle_temp_max": 240,
+    "setting_id": "GFSPM016_05"
+  },
+  {
+    "filament_id": "GFPM001",
+    "name": "Panchroma PLA",
+    "type": "PLA",
+    "nozzle_temp_min": 190,
+    "nozzle_temp_max": 240,
+    "setting_id": "GFSPM004_09"
+  },
+  {
+    "filament_id": "GFPM008",
+    "name": "Panchroma PLA Celestial",
+    "type": "PLA",
+    "nozzle_temp_min": 190,
+    "nozzle_temp_max": 240,
+    "setting_id": "GFSPM008_08"
+  },
+  {
+    "filament_id": "GFPM007",
+    "name": "Panchroma PLA Galaxy",
+    "type": "PLA",
+    "nozzle_temp_min": 190,
+    "nozzle_temp_max": 240,
+    "setting_id": "GFSPM007_04"
+  },
+  {
+    "filament_id": "GFPM010",
+    "name": "Panchroma PLA Glow",
+    "type": "PLA",
+    "nozzle_temp_min": 190,
+    "nozzle_temp_max": 240,
+    "setting_id": "GFSPM010_08"
+  },
+  {
+    "filament_id": "GFPM011",
+    "name": "Panchroma PLA Luminous",
+    "type": "PLA",
+    "nozzle_temp_min": 190,
+    "nozzle_temp_max": 240,
+    "setting_id": "GFSPM011_05"
+  },
+  {
+    "filament_id": "GFPM003",
+    "name": "Panchroma PLA Marble",
+    "type": "PLA",
+    "nozzle_temp_min": 190,
+    "nozzle_temp_max": 240,
+    "setting_id": "GFSPM003_04"
+  },
+  {
+    "filament_id": "GFPM002",
+    "name": "Panchroma PLA Matte",
+    "type": "PLA",
+    "nozzle_temp_min": 190,
+    "nozzle_temp_max": 240,
+    "setting_id": "GFSPM002_09"
+  },
+  {
+    "filament_id": "GFPM012",
+    "name": "Panchroma PLA Metallic",
+    "type": "PLA",
+    "nozzle_temp_min": 190,
+    "nozzle_temp_max": 240,
+    "setting_id": "GFSPM012_08"
+  },
+  {
+    "filament_id": "GFPM013",
+    "name": "Panchroma PLA Neon",
+    "type": "PLA",
+    "nozzle_temp_min": 190,
+    "nozzle_temp_max": 240,
+    "setting_id": "GFSPM013_04"
+  },
+  {
+    "filament_id": "GFPM004",
+    "name": "Panchroma PLA Silk",
+    "type": "PLA",
+    "nozzle_temp_min": 190,
+    "nozzle_temp_max": 240,
+    "setting_id": "GFSPM004_05"
+  },
+  {
+    "filament_id": "GFPM005",
+    "name": "Panchroma PLA Stain",
+    "type": "PLA",
+    "nozzle_temp_min": 190,
+    "nozzle_temp_max": 240,
+    "setting_id": "GFSPM005_08"
+  },
+  {
+    "filament_id": "GFPM009",
+    "name": "Panchroma PLA Starlight",
+    "type": "PLA",
+    "nozzle_temp_min": 190,
+    "nozzle_temp_max": 240,
+    "setting_id": "GFSPM009_04"
+  },
+  {
+    "filament_id": "GFPM015",
+    "name": "Panchroma PLA Temp Shift",
+    "type": "PLA",
+    "nozzle_temp_min": 190,
+    "nozzle_temp_max": 240,
+    "setting_id": "GFSPM015_04"
+  },
+  {
+    "filament_id": "GFPM006",
+    "name": "Panchroma PLA Translucent",
+    "type": "PLA",
+    "nozzle_temp_min": 190,
+    "nozzle_temp_max": 240,
+    "setting_id": "GFSPM006_05"
+  },
+  {
+    "filament_id": "GFPM014",
+    "name": "Panchroma PLA UV Shift",
+    "type": "PLA",
+    "nozzle_temp_min": 190,
+    "nozzle_temp_max": 240,
+    "setting_id": "GFSPM014_04"
+  },
+  {
+    "filament_id": "GFL00",
+    "name": "PolyLite PLA",
+    "type": "PLA",
+    "nozzle_temp_min": 190,
+    "nozzle_temp_max": 240,
+    "setting_id": "GFSL19"
+  },
+  {
+    "filament_id": "GFPM019",
+    "name": "PolyLite PLA Pro",
+    "type": "PLA",
+    "nozzle_temp_min": 190,
+    "nozzle_temp_max": 220,
+    "setting_id": "GFSPM019_05"
+  },
+  {
+    "filament_id": "GFL01",
+    "name": "PolyTerra PLA",
+    "type": "PLA",
+    "nozzle_temp_min": 190,
+    "nozzle_temp_max": 240,
+    "setting_id": "GFSL18"
+  },
+  {
+    "filament_id": "GFPM017",
+    "name": "Polymaker HT-PLA",
+    "type": "PLA",
+    "nozzle_temp_min": 210,
+    "nozzle_temp_max": 230,
+    "setting_id": "GFSPM017_09"
+  },
+  {
+    "filament_id": "GFPM018",
+    "name": "Polymaker HT-PLA-GF",
+    "type": "PLA",
+    "nozzle_temp_min": 210,
+    "nozzle_temp_max": 230,
+    "setting_id": "GFSPM018_09"
+  },
+  {
+    "filament_id": "GFSNL06",
+    "name": "SUNLU PLA Marble",
+    "type": "PLA",
+    "nozzle_temp_min": 190,
+    "nozzle_temp_max": 260,
+    "setting_id": "GFSNLS06_01"
+  },
+  {
+    "filament_id": "GFSNL02",
+    "name": "SUNLU PLA Matte",
+    "type": "PLA",
+    "nozzle_temp_min": 205,
+    "nozzle_temp_max": 245,
+    "setting_id": "GFSNLS02_03"
+  },
+  {
+    "filament_id": "GFSNL03",
+    "name": "SUNLU PLA+",
+    "type": "PLA",
+    "nozzle_temp_min": 190,
+    "nozzle_temp_max": 240,
+    "setting_id": "GFSNLS03_03"
+  },
+  {
+    "filament_id": "GFSNL04",
+    "name": "SUNLU PLA+ 2.0",
+    "type": "PLA",
+    "nozzle_temp_min": 190,
+    "nozzle_temp_max": 240,
+    "setting_id": "GFSNLS04"
+  },
+  {
+    "filament_id": "GFSNL05",
+    "name": "SUNLU Silk PLA+",
+    "type": "PLA",
+    "nozzle_temp_min": 190,
+    "nozzle_temp_max": 240,
+    "setting_id": "GFSNLS05"
+  },
+  {
+    "filament_id": "GFSNL07",
+    "name": "SUNLU Wood PLA",
+    "type": "PLA",
+    "nozzle_temp_min": 195,
+    "nozzle_temp_max": 260,
+    "setting_id": "GFSNLS07"
+  },
+  {
+    "filament_id": "GFL03",
+    "name": "eSUN PLA+",
+    "type": "PLA",
+    "nozzle_temp_min": 190,
+    "nozzle_temp_max": 240,
+    "setting_id": "GFSL03_00"
+  },
+  {
+    "filament_id": "GFA11",
+    "name": "Bambu PLA Aero",
+    "type": "PLA-AERO",
+    "nozzle_temp_min": 210,
+    "nozzle_temp_max": 260,
+    "setting_id": "GFSA11_01"
+  },
+  {
+    "filament_id": "GFA50",
+    "name": "Bambu PLA-CF",
+    "type": "PLA-CF",
+    "nozzle_temp_min": 210,
+    "nozzle_temp_max": 250,
+    "setting_id": "GFSA50_02"
+  },
+  {
+    "filament_id": "GFL98",
+    "name": "Generic PLA-CF",
+    "type": "PLA-CF",
+    "nozzle_temp_min": 190,
+    "nozzle_temp_max": 240,
+    "setting_id": "GFSL98"
+  },
+  {
+    "filament_id": "GFP97",
+    "name": "Generic PP",
+    "type": "PP",
+    "nozzle_temp_min": 220,
+    "nozzle_temp_max": 250,
+    "setting_id": "GFSP97_00"
+  },
+  {
+    "filament_id": "GFP96",
+    "name": "Generic PP-CF",
+    "type": "PP-CF",
+    "nozzle_temp_min": 220,
+    "nozzle_temp_max": 250,
+    "setting_id": "GFSP96_00"
+  },
+  {
+    "filament_id": "GFP95",
+    "name": "Generic PP-GF",
+    "type": "PP-GF",
+    "nozzle_temp_min": 220,
+    "nozzle_temp_max": 250,
+    "setting_id": "GFSP97_03"
+  },
+  {
+    "filament_id": "GFN06",
+    "name": "Bambu PPA-CF",
+    "type": "PPA-CF",
+    "nozzle_temp_min": 280,
+    "nozzle_temp_max": 320,
+    "setting_id": "GFSN06_00"
+  },
+  {
+    "filament_id": "GFN97",
+    "name": "Generic PPA-CF",
+    "type": "PPA-CF",
+    "nozzle_temp_min": 280,
+    "nozzle_temp_max": 320,
+    "setting_id": "GFSN97_00"
+  },
+  {
+    "filament_id": "GFN96",
+    "name": "Generic PPA-GF",
+    "type": "PPA-GF",
+    "nozzle_temp_min": 280,
+    "nozzle_temp_max": 320,
+    "setting_id": "GFSN96_00"
+  },
+  {
+    "filament_id": "GFT97",
+    "name": "Generic PPS",
+    "type": "PPS",
+    "nozzle_temp_min": 300,
+    "nozzle_temp_max": 340,
+    "setting_id": "GFST97_00"
+  },
+  {
+    "filament_id": "GFT02",
+    "name": "Bambu PPS-CF",
+    "type": "PPS-CF",
+    "nozzle_temp_min": 310,
+    "nozzle_temp_max": 340,
+    "setting_id": "GFST02_00"
+  },
+  {
+    "filament_id": "GFT98",
+    "name": "Generic PPS-CF",
+    "type": "PPS-CF",
+    "nozzle_temp_min": 310,
+    "nozzle_temp_max": 340,
+    "setting_id": "GFST98_00"
+  },
+  {
+    "filament_id": "GFS04",
+    "name": "Bambu PVA",
+    "type": "PVA",
+    "nozzle_temp_min": 210,
+    "nozzle_temp_max": 250,
+    "setting_id": "GFSS04_00"
+  },
+  {
+    "filament_id": "GFS99",
+    "name": "Generic PVA",
+    "type": "PVA",
+    "nozzle_temp_min": 190,
+    "nozzle_temp_max": 240,
+    "setting_id": "GFSS99_00"
+  },
+  {
+    "filament_id": "GFLSBS99",
+    "name": "Generic SBS",
+    "type": "SBS",
+    "nozzle_temp_min": 215,
+    "nozzle_temp_max": 250,
+    "setting_id": "BFLSBS99-1"
+  },
+  {
+    "filament_id": "GFU01",
+    "name": "Bambu TPU 95A",
+    "type": "TPU",
+    "nozzle_temp_min": 200,
+    "nozzle_temp_max": 250,
+    "setting_id": "GFSU00"
+  },
+  {
+    "filament_id": "GFU00",
+    "name": "Bambu TPU 95A HF",
+    "type": "TPU",
+    "nozzle_temp_min": 200,
+    "nozzle_temp_max": 250,
+    "setting_id": "GFSU00_03"
+  },
+  {
+    "filament_id": "GFU02",
+    "name": "Bambu TPU for AMS",
+    "type": "TPU-AMS",
+    "nozzle_temp_min": 220,
+    "nozzle_temp_max": 240,
+    "setting_id": "GFSU02_00"
+  },
+  {
+    "filament_id": "GFU98",
+    "name": "Generic TPU for AMS",
+    "type": "TPU-AMS",
+    "nozzle_temp_min": 200,
+    "nozzle_temp_max": 250,
+    "setting_id": "GFSU98_00"
+  }
+]
