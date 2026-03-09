@@ -23,14 +23,23 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Print
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.ModalDrawerSheet
+import androidx.compose.material3.ModalNavigationDrawer
+import androidx.compose.material3.NavigationDrawerItem
+import androidx.compose.material3.rememberDrawerState
 import androidx.compose.material.icons.filled.Videocam
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
@@ -89,6 +98,8 @@ fun DashboardScreen(
 ) {
     val isEnclosed = !serialNumber.startsWith("030")
     var showSpeedDialog by remember { mutableStateOf(false) }
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+    val scope = rememberCoroutineScope()
 
     if (showSpeedDialog) {
         SpeedLevelDialog(
@@ -101,6 +112,69 @@ fun DashboardScreen(
         )
     }
 
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        drawerContent = {
+            ModalDrawerSheet(modifier = Modifier.width(280.dp)) {
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = "Openbu",
+                    style = MaterialTheme.typography.headlineSmall,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                )
+                if (printerName.isNotBlank()) {
+                    Text(
+                        text = printerName,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                    )
+                }
+                HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
+                NavigationDrawerItem(
+                    label = { Text("Printer Settings") },
+                    selected = false,
+                    onClick = {
+                        scope.launch { drawerState.close() }
+                        onOpenPrinterSettings()
+                    },
+                    icon = { Icon(Icons.Filled.Print, contentDescription = null) },
+                    modifier = Modifier.padding(horizontal = 12.dp),
+                )
+                NavigationDrawerItem(
+                    label = { Text("File Manager") },
+                    selected = false,
+                    onClick = {
+                        scope.launch { drawerState.close() }
+                        onOpenFileManager()
+                    },
+                    icon = { Icon(Icons.Filled.Folder, contentDescription = null) },
+                    modifier = Modifier.padding(horizontal = 12.dp),
+                )
+                NavigationDrawerItem(
+                    label = { Text("Timelapses") },
+                    selected = false,
+                    onClick = {
+                        scope.launch { drawerState.close() }
+                        onOpenTimelapse()
+                    },
+                    icon = { Icon(Icons.Filled.Videocam, contentDescription = null) },
+                    modifier = Modifier.padding(horizontal = 12.dp),
+                )
+                HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
+                NavigationDrawerItem(
+                    label = { Text("Settings") },
+                    selected = false,
+                    onClick = {
+                        scope.launch { drawerState.close() }
+                        onOpenSettings()
+                    },
+                    icon = { Icon(Icons.Filled.Settings, contentDescription = null) },
+                    modifier = Modifier.padding(horizontal = 12.dp),
+                )
+            }
+        },
+    ) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -112,31 +186,15 @@ fun DashboardScreen(
         Spacer(modifier = Modifier.height(48.dp))
 
         Box(modifier = Modifier.fillMaxWidth()) {
-            Row(
+            IconButton(
+                onClick = { scope.launch { drawerState.open() } },
                 modifier = Modifier.align(Alignment.CenterStart),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                IconButton(onClick = onOpenPrinterSettings) {
-                    Icon(
-                        imageVector = Icons.Filled.Print,
-                        contentDescription = "Printer Settings",
-                        tint = MaterialTheme.colorScheme.onBackground,
-                    )
-                }
-                IconButton(onClick = onOpenFileManager) {
-                    Icon(
-                        imageVector = Icons.Filled.Folder,
-                        contentDescription = "File Manager",
-                        tint = MaterialTheme.colorScheme.onBackground,
-                    )
-                }
-                IconButton(onClick = onOpenTimelapse) {
-                    Icon(
-                        imageVector = Icons.Filled.Videocam,
-                        contentDescription = "Recordings",
-                        tint = MaterialTheme.colorScheme.onBackground,
-                    )
-                }
+                Icon(
+                    imageVector = Icons.Filled.Menu,
+                    contentDescription = "Menu",
+                    tint = MaterialTheme.colorScheme.onBackground,
+                )
             }
             Column(
                 modifier = Modifier.align(Alignment.Center),
@@ -156,24 +214,15 @@ fun DashboardScreen(
                     )
                 }
             }
-            Row(
+            IconButton(
+                onClick = { showSpeedDialog = true },
                 modifier = Modifier.align(Alignment.CenterEnd),
-                horizontalArrangement = Arrangement.spacedBy(0.dp),
             ) {
-                IconButton(onClick = { showSpeedDialog = true }) {
-                    Icon(
-                        imageVector = Icons.Filled.Speed,
-                        contentDescription = "Print Speed",
-                        tint = MaterialTheme.colorScheme.onBackground,
-                    )
-                }
-                IconButton(onClick = onOpenSettings) {
-                    Icon(
-                        imageVector = Icons.Filled.Settings,
-                        contentDescription = "Settings",
-                        tint = MaterialTheme.colorScheme.onBackground,
-                    )
-                }
+                Icon(
+                    imageVector = Icons.Filled.Speed,
+                    contentDescription = "Print Speed",
+                    tint = MaterialTheme.colorScheme.onBackground,
+                )
             }
         }
 
@@ -325,6 +374,7 @@ fun DashboardScreen(
 
         Spacer(modifier = Modifier.height(32.dp))
     }
+    } // ModalNavigationDrawer
 }
 
 @Composable
