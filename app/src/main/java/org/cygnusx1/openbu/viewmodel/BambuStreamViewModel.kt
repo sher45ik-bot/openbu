@@ -9,6 +9,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
+import org.cygnusx1.openbu.data.FilamentProfile
 import org.cygnusx1.openbu.network.BambuCameraClient
 import org.cygnusx1.openbu.network.BambuFtpsClient
 import org.cygnusx1.openbu.network.BambuMqttClient
@@ -401,6 +402,12 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
     fun setSpeedLevel(level: Int) {
         viewModelScope.launch(Dispatchers.IO) {
             mqttClient?.setSpeedLevel(level)
+        }
+    }
+
+    fun setFilament(amsId: Int, trayId: Int, profile: FilamentProfile, colorHex: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            mqttClient?.setFilament(amsId, trayId, profile, colorHex)
         }
     }
 

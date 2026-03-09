@@ -3,10 +3,13 @@ package org.cygnusx1.openbu.ui
 import android.graphics.Bitmap
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
@@ -17,6 +20,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -34,9 +39,11 @@ import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -52,6 +59,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -62,6 +70,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import org.cygnusx1.openbu.R
+import org.cygnusx1.openbu.data.FilamentProfile
 import org.cygnusx1.openbu.network.AmsTray
 import org.cygnusx1.openbu.network.AmsUnit
 import org.cygnusx1.openbu.network.PrinterStatus
@@ -85,8 +94,25 @@ fun DashboardScreen(
     onOpenTimelapse: () -> Unit,
     onSetSpeedLevel: (Int) -> Unit,
     onPrinterActionCommand: (String) -> Unit,
+    filaments: List<FilamentProfile> = emptyList(),
+    onSetFilament: (Int, Int, FilamentProfile, String) -> Unit = { _, _, _, _ -> },
 ) {
     var showSpeedDialog by remember { mutableStateOf(false) }
+    // (amsId, trayId, currentType, currentColor)
+    var filamentEditTarget by remember { mutableStateOf<Triple<Int, Int, Pair<String, String>>?>(null) }
+
+    filamentEditTarget?.let { (amsId, trayId, current) ->
+        FilamentEditDialog(
+            currentType = current.first,
+            currentColor = current.second,
+            filaments = filaments,
+            onConfirm = { profile, colorHex ->
+                onSetFilament(amsId, trayId, profile, colorHex)
+                filamentEditTarget = null
+            },
+            onDismiss = { filamentEditTarget = null },
+        )
+    }
 
     if (showSpeedDialog) {
         SpeedLevelDialog(
@@ -309,12 +335,24 @@ fun DashboardScreen(
 
         // AMS cards
         for (amsUnit in printerStatus.amsUnits) {
-            AmsCard(amsUnit)
+            AmsCard(amsUnit) { tray ->
+                filamentEditTarget = Triple(
+                    amsUnit.id.toIntOrNull() ?: 0,
+                    tray.id.toIntOrNull() ?: 0,
+                    Pair(tray.trayType, tray.trayColor),
+                )
+            }
             Spacer(modifier = Modifier.height(8.dp))
         }
 
         // External spool
-        ExternalSpoolCard(printerStatus.vtTray)
+        ExternalSpoolCard(printerStatus.vtTray) {
+            filamentEditTarget = Triple(
+                255,
+                254,
+                Pair(printerStatus.vtTray?.trayType ?: "", printerStatus.vtTray?.trayColor ?: ""),
+            )
+        }
         Spacer(modifier = Modifier.height(8.dp))
 
         Spacer(modifier = Modifier.height(32.dp))
@@ -527,7 +565,7 @@ private fun IconStatusCard(
 }
 
 @Composable
-private fun AmsCard(amsUnit: AmsUnit) {
+private fun AmsCard(amsUnit: AmsUnit, onTrayClick: (AmsTray) -> Unit) {
     val amsLabel = amsUnit.model.ifEmpty { "AMS" }
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -552,7 +590,7 @@ private fun AmsCard(amsUnit: AmsUnit) {
                     horizontalArrangement = Arrangement.SpaceEvenly,
                 ) {
                     for (tray in amsUnit.trays) {
-                        FilamentSlot(tray)
+                        FilamentSlot(tray, onClick = { onTrayClick(tray) })
                     }
                 }
             }
@@ -561,10 +599,11 @@ private fun AmsCard(amsUnit: AmsUnit) {
 }
 
 @Composable
-private fun FilamentSlot(tray: AmsTray) {
+private fun FilamentSlot(tray: AmsTray, onClick: () -> Unit = {}) {
     val isEmpty = tray.trayType.isEmpty()
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.clickable { onClick() },
     ) {
         if (isEmpty) {
             Box(
@@ -595,7 +634,7 @@ private fun FilamentSlot(tray: AmsTray) {
 }
 
 @Composable
-private fun ExternalSpoolCard(vtTray: AmsTray?) {
+private fun ExternalSpoolCard(vtTray: AmsTray?, onClick: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
@@ -616,10 +655,11 @@ private fun ExternalSpoolCard(vtTray: AmsTray?) {
                 horizontalArrangement = Arrangement.SpaceEvenly,
             ) {
                 if (vtTray != null) {
-                    FilamentSlot(vtTray)
+                    FilamentSlot(vtTray, onClick = onClick)
                 } else {
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.clickable { onClick() },
                     ) {
                         Box(
                             modifier = Modifier.size(32.dp),
@@ -658,6 +698,186 @@ private fun RtspStreamCard(player: ExoPlayer, onClick: () -> Unit) {
                 .background(Color.Black),
         )
     }
+}
+
+private val FilamentPresetColors = listOf(
+    "White" to Color(0xFFFFFFFF),
+    "Black" to Color(0xFF000000),
+    "Red" to Color(0xFFF44336),
+    "Orange" to Color(0xFFFF9800),
+    "Yellow" to Color(0xFFFFEB3B),
+    "Green" to Color(0xFF4CAF50),
+    "Blue" to Color(0xFF2196F3),
+    "Purple" to Color(0xFF9C27B0),
+    "Pink" to Color(0xFFE91E63),
+    "Brown" to Color(0xFF795548),
+    "Grey" to Color(0xFF9E9E9E),
+    "Cyan" to Color(0xFF00BCD4),
+)
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun FilamentEditDialog(
+    currentType: String,
+    currentColor: String,
+    filaments: List<FilamentProfile>,
+    onConfirm: (FilamentProfile, String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val types = remember(filaments) { filaments.map { it.type }.distinct().sorted() }
+    var selectedType by remember { mutableStateOf(currentType.ifEmpty { types.firstOrNull() ?: "" }) }
+    var selectedProfile by remember { mutableStateOf<FilamentProfile?>(null) }
+    var selectedColorArgb by remember {
+        mutableStateOf(
+            if (currentColor.length >= 6) {
+                try {
+                    val r = currentColor.substring(0, 2).toInt(16)
+                    val g = currentColor.substring(2, 4).toInt(16)
+                    val b = currentColor.substring(4, 6).toInt(16)
+                    Color(r, g, b).toArgb()
+                } catch (_: Exception) { Color.Gray.toArgb() }
+            } else Color.Gray.toArgb()
+        )
+    }
+    var hexInput by remember {
+        mutableStateOf(
+            if (currentColor.length >= 6) "#${currentColor.take(6)}" else ""
+        )
+    }
+
+    val filtered = remember(filaments, selectedType) {
+        filaments.filter { it.type == selectedType }
+    }
+
+    // Auto-select first profile when type changes
+    if (selectedProfile == null || selectedProfile!!.type != selectedType) {
+        selectedProfile = filtered.firstOrNull()
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Set Filament") },
+        text = {
+            Column {
+                // Type filter chips
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    for (type in types) {
+                        FilterChip(
+                            selected = type == selectedType,
+                            onClick = { selectedType = type },
+                            label = { Text(type, style = MaterialTheme.typography.labelSmall) },
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Filament list
+                LazyColumn(modifier = Modifier.height(150.dp)) {
+                    items(filtered) { profile ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { selectedProfile = profile }
+                                .padding(vertical = 2.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            RadioButton(
+                                selected = selectedProfile == profile,
+                                onClick = { selectedProfile = profile },
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Column {
+                                Text(
+                                    text = profile.name,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                )
+                                Text(
+                                    text = "${profile.nozzleTempMin}-${profile.nozzleTempMax}\u00B0C",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+                Text("Color", style = MaterialTheme.typography.labelMedium)
+                Spacer(modifier = Modifier.height(4.dp))
+
+                // Color presets
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    FilamentPresetColors.forEach { (_, color) ->
+                        val argb = color.toArgb()
+                        val isSelected = selectedColorArgb == argb
+                        Box(
+                            modifier = Modifier
+                                .size(32.dp)
+                                .clip(CircleShape)
+                                .background(color)
+                                .border(
+                                    width = if (isSelected) 3.dp else 1.dp,
+                                    color = if (isSelected) MaterialTheme.colorScheme.primary
+                                    else MaterialTheme.colorScheme.outline,
+                                    shape = CircleShape,
+                                )
+                                .clickable {
+                                    selectedColorArgb = argb
+                                    hexInput = String.format("#%06X", 0xFFFFFF and argb)
+                                },
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                OutlinedTextField(
+                    value = hexInput,
+                    onValueChange = { input ->
+                        hexInput = input
+                        val hex = input.trim().removePrefix("#")
+                        if (hex.length == 6) {
+                            try {
+                                selectedColorArgb = (0xFF000000 or hex.toLong(16)).toInt()
+                            } catch (_: NumberFormatException) {}
+                        }
+                    },
+                    label = { Text("Hex color") },
+                    placeholder = { Text("#FF5722") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    selectedProfile?.let { profile ->
+                        val r = (selectedColorArgb shr 16) and 0xFF
+                        val g = (selectedColorArgb shr 8) and 0xFF
+                        val b = selectedColorArgb and 0xFF
+                        val colorHex = String.format("%02X%02X%02XFF", r, g, b)
+                        onConfirm(profile, colorHex)
+                    }
+                },
+                enabled = selectedProfile != null,
+            ) {
+                Text("Set")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        },
+    )
 }
 
 private fun fanSpeedPercent(raw: String): Int {

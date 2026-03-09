@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import org.cygnusx1.openbu.data.FilamentProfile
 import org.json.JSONObject
 import java.io.BufferedOutputStream
 import java.io.ByteArrayOutputStream
@@ -199,6 +200,43 @@ class BambuMqttClient(
         }
     }
 
+    fun setFilament(amsId: Int, trayId: Int, profile: FilamentProfile, colorHex: String) {
+        val out = socketOutput ?: return
+        // ams_id is the hardware ID as reported by the printer:
+        //   0-3 for standard AMS, 128+ for AMS-HT/Lite, 255 for external spool
+        // tray_id: slot index within the AMS unit (0-3), or 254 for external spool
+        // BambuStudio sends both slot_id and tray_id; for physical AMS, tray_id = slot_id;
+        // for virtual trays (external spool), tray_id = 254.
+        val isVirtual = amsId == 255
+        val tagTrayId = if (isVirtual) 254 else trayId
+        val json = JSONObject().apply {
+            put("print", JSONObject().apply {
+                put("sequence_id", "0")
+                put("command", "ams_filament_setting")
+                put("ams_id", amsId)
+                put("slot_id", trayId)
+                put("tray_id", tagTrayId)
+                put("tray_info_idx", profile.filamentId)
+                put("tray_type", profile.type)
+                put("tray_color", colorHex)
+                put("nozzle_temp_min", profile.nozzleTempMin)
+                put("nozzle_temp_max", profile.nozzleTempMax)
+                put("setting_id", profile.settingId)
+            })
+        }
+        try {
+            val topic = "device/$serialNumber/request"
+            if (debugLogging) Log.d(TAG, "Publishing ams_filament_setting: ${json.toString()}")
+            val packet = buildPublishPacket(topic, json.toString())
+            synchronized(out) {
+                out.write(packet)
+                out.flush()
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to publish ams_filament_setting", e)
+        }
+    }
+
     fun setSpeedLevel(level: Int) {
         val out = socketOutput ?: return
         val json = JSONObject().apply {
@@ -265,6 +303,7 @@ class BambuMqttClient(
 
     private fun parseVersionResponse(info: JSONObject) {
         val modules = info.optJSONArray("module") ?: return
+        var changed = false
         for (i in 0 until modules.length()) {
             val module = modules.getJSONObject(i)
             val name = module.optString("name", "")
@@ -275,7 +314,19 @@ class BambuMqttClient(
             if (slashIndex < 0) continue
             val amsId = name.substring(slashIndex + 1)
             amsModelMap[amsId] = productName
+            changed = true
             if (debugLogging) Log.d(TAG, "AMS model: id=$amsId -> $productName")
+        }
+        // Re-apply models to existing AMS units (version response may arrive after pushall)
+        if (changed) {
+            val current = _printerStatus.value
+            val updated = current.amsUnits.map { unit ->
+                val model = amsModelMap[unit.id] ?: unit.model
+                if (model != unit.model) unit.copy(model = model) else unit
+            }
+            if (updated != current.amsUnits) {
+                _printerStatus.value = current.copy(amsUnits = updated)
+            }
         }
     }
 
@@ -291,6 +342,14 @@ class BambuMqttClient(
         }
 
         val print = root.optJSONObject("print") ?: return
+
+        // When ams_filament_setting succeeds, request a full status refresh
+        if (print.optString("command") == "ams_filament_setting" &&
+            print.optString("result") == "success"
+        ) {
+            if (debugLogging) Log.d(TAG, "ams_filament_setting succeeded, requesting pushall")
+            requestStatus()
+        }
 
         parsePrinterStatus(print)
 
