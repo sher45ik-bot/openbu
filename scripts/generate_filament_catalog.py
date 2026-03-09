@@ -43,18 +43,19 @@ def resolve_field(profiles, profile_name, field):
 def main():
     profiles = {}
 
-    # Load all JSON profiles
-    for fname in os.listdir(PROFILES_DIR):
-        if not fname.endswith('.json'):
-            continue
-        path = os.path.join(PROFILES_DIR, fname)
-        try:
-            data = load_json(path)
-        except Exception as e:
-            print(f"Warning: failed to load {fname}: {e}", file=sys.stderr)
-            continue
-        name = data.get('name', fname.replace('.json', ''))
-        profiles[name] = data
+    # Load all JSON profiles (including subdirectories for third-party brands)
+    for dirpath, _, fnames in os.walk(PROFILES_DIR):
+        for fname in fnames:
+            if not fname.endswith('.json'):
+                continue
+            path = os.path.join(dirpath, fname)
+            try:
+                data = load_json(path)
+            except Exception as e:
+                print(f"Warning: failed to load {fname}: {e}", file=sys.stderr)
+                continue
+            name = data.get('name', fname.replace('.json', ''))
+            profiles[name] = data
 
     # Find @base profiles (these have filament_id)
     base_profiles = {}
