@@ -20,10 +20,16 @@ import javax.net.ssl.X509TrustManager
 import android.util.Log
 import kotlin.coroutines.coroutineContext
 
+private const val TAG = "BambuCamera"
+private const val DEFAULT_PORT = 6000
+private const val USERNAME = "bblp"
+private const val PROTOCOL = "rtsps"
+private const val URL_PATH = "/streaming/live/1"
+
 class BambuCameraClient(
     private val ip: String,
     private val accessCode: String,
-    private val port: Int = 6000,
+    private val port: Int = DEFAULT_PORT,
     private val connectTimeoutMs: Int = 10_000,
     private val readTimeoutMs: Int = 30_000,
 ) {
@@ -151,8 +157,8 @@ class BambuCameraClient(
         payload[4] = 0; payload[5] = 0x30; payload[6] = 0; payload[7] = 0
         // Bytes 8-15: zeros (already zeroed)
 
-        // Bytes 16-47: username "bblp" (32 bytes, null-padded)
-        val username = "bblp".toByteArray(Charsets.US_ASCII)
+        // Bytes 16-47: username (32 bytes, null-padded)
+        val username = USERNAME.toByteArray(Charsets.US_ASCII)
         username.copyInto(payload, 16)
 
         // Bytes 48-79: access code (32 bytes, null-padded)
@@ -164,7 +170,8 @@ class BambuCameraClient(
     }
 
     companion object {
-        private const val TAG = "BambuCamera"
+        fun buildRtspsUrl(ip: String, accessCode: String, port: Int = DEFAULT_PORT): String =
+            "$PROTOCOL://$USERNAME:$accessCode@$ip:$port$URL_PATH"
 
         /** Find the last occurrence of FF D9 (JPEG EOI) in the byte array */
         private fun findEoi(data: ByteArray): Int {

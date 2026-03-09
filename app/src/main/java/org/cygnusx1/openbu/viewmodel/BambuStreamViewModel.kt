@@ -353,8 +353,7 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
                 }
             }
         } else {
-            // All other printers — use RTSPS on port 322
-            val rtspUrl = "rtsps://bblp:$accessCode@$ip:322/streaming/live/1"
+            val rtspUrl = BambuCameraClient.buildRtspsUrl(ip, accessCode)
             Log.d("RTSP", "Non-MJPEG printer (serial=$serialNumber), auto-configuring RTSPS: $rtspUrl")
             _rtspEnabled.value = true
             _rtspUrl.value = rtspUrl
