@@ -253,9 +253,6 @@ class MainActivity : ComponentActivity() {
                         requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
                         BackHandler { showPrinterSettings = false }
                         val customPrinterName by viewModel.customPrinterName.collectAsState()
-                        val isAutoRtsp = connectedSerialNumber.length >= 3 &&
-                            !connectedSerialNumber.startsWith("01S") &&
-                            !connectedSerialNumber.startsWith("01P")
                         PrinterSettingsScreen(
                             customPrinterName = customPrinterName,
                             onCustomPrinterNameChanged = { viewModel.setCustomPrinterName(it) },
@@ -263,7 +260,6 @@ class MainActivity : ComponentActivity() {
                             onRtspEnabledChanged = { viewModel.setRtspEnabled(it) },
                             rtspUrl = rtspUrl,
                             onRtspUrlChanged = { viewModel.setRtspUrl(it) },
-                            isAutoRtsp = isAutoRtsp,
                             customBgColor = customBgColor,
                             onBgColorChanged = { viewModel.setCustomBgColor(it) },
                             isSaved = savedPrinters.any { it.serialNumber == connectedSerialNumber },
