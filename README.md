@@ -22,7 +22,7 @@ I own a [Bambu Lab](https://bambulab.com/en-us) [P1S](https://bambulab.com/en-us
 I quickly found [Lanbu](https://play.google.com/store/apps/details?id=com.Glowbeast.LanBu&hl=en_US), but I have a few issues with it. It isn't open source, it isn't especially pretty, the author locked the video feature behind a paywall, and it doesn't auto-detect the printers on the network.
 
 ## Status
-This is a brand new project, and has stated above I own a [P1S](https://bambulab.com/en-us/p1) and a [AMS HT](https://us.store.bambulab.com/products/ams-ht?from=home_web_top_navigation). This makes it harder to test and support A1, P2, X1, and H2 series printers. It also makes it harder to test and support the [AMS](https://us.store.bambulab.com/products/ams-multicolor-printing?from=home_web_top_navigation) and [AMS 2 Pro](https://us.store.bambulab.com/products/ams-2-pro?from=home_web_top_navigation).
+This is a brand new project, and has stated above I own a [P1S](https://bambulab.com/en-us/p1) and a [AMS HT](https://us.store.bambulab.com/products/ams-ht). This makes it harder to test and support A1, P2, X1, and H2 series printers. It also makes it harder to test and support the [AMS](https://us.store.bambulab.com/products/ams-multicolor-printing), [AMS Lite](https://us.store.bambulab.com/products/ams-lite), and [AMS 2 Pro](https://us.store.bambulab.com/products/ams-2-pro).
 
 I am currently trying to workaround this with a program that mocks the [MQTT](https://en.wikipedia.org/wiki/MQTT) output. My plan is to open source that too as another git repository.
 
