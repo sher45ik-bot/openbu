@@ -117,8 +117,7 @@ class MainActivity : ComponentActivity() {
                 val rtspPlayer = remember(effectiveRtspUrl) {
                     if (effectiveRtspUrl.isNotBlank()) {
                         val isRtsps = effectiveRtspUrl.startsWith("rtsps://")
-                        val playerUrl = if (isRtsps) effectiveRtspUrl.replaceFirst("rtsps://", "rtsp://") else effectiveRtspUrl
-                        Log.d("RTSP", "Creating player: isRtsps=$isRtsps, playerUrl=$playerUrl")
+                        Log.d("RTSP", "Creating player: isRtsps=$isRtsps, url=$effectiveRtspUrl")
                         ExoPlayer.Builder(this@MainActivity).build().apply {
                             addListener(object : Player.Listener {
                                 override fun onPlaybackStateChanged(playbackState: Int) {
@@ -155,7 +154,7 @@ class MainActivity : ComponentActivity() {
                                     setForceUseRtpTcp(true)
                                 }
                             }
-                            val mediaSource = factory.createMediaSource(MediaItem.fromUri(playerUrl))
+                            val mediaSource = factory.createMediaSource(MediaItem.fromUri(effectiveRtspUrl))
                             setMediaSource(mediaSource)
                             prepare()
                             playWhenReady = true

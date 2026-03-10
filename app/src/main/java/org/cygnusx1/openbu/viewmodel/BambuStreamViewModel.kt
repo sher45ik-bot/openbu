@@ -305,7 +305,6 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
         _errorMessage.value = null
 
         if (usesMjpegCamera(serialNumber)) {
-            // P1P / P1S — use MJPEG over SSL on port 6000
             _showMainStream.value = prefs.getBoolean("show_main_stream", true)
             val bambuClient = BambuCameraClient(ip, accessCode)
             bambuClient.extendedDebugLogging = _extendedDebugLogging.value

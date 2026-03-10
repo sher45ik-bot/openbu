@@ -21,7 +21,8 @@ import android.util.Log
 import kotlin.coroutines.coroutineContext
 
 private const val TAG = "BambuCamera"
-private const val DEFAULT_PORT = 6000
+private const val DEFAULT_MJPEG_PORT = 6000
+private const val DEFAULT_RTSP_PORT = 322
 private const val USERNAME = "bblp"
 private const val PROTOCOL = "rtsps"
 private const val URL_PATH = "/streaming/live/1"
@@ -29,7 +30,7 @@ private const val URL_PATH = "/streaming/live/1"
 class BambuCameraClient(
     private val ip: String,
     private val accessCode: String,
-    private val port: Int = DEFAULT_PORT,
+    private val port: Int = DEFAULT_MJPEG_PORT,
     private val connectTimeoutMs: Int = 10_000,
     private val readTimeoutMs: Int = 30_000,
 ) {
@@ -170,7 +171,7 @@ class BambuCameraClient(
     }
 
     companion object {
-        fun buildRtspsUrl(ip: String, accessCode: String, port: Int = DEFAULT_PORT): String =
+        fun buildRtspsUrl(ip: String, accessCode: String, port: Int = DEFAULT_RTSP_PORT): String =
             "$PROTOCOL://$USERNAME:$accessCode@$ip:$port$URL_PATH"
 
         /** Find the last occurrence of FF D9 (JPEG EOI) in the byte array */
