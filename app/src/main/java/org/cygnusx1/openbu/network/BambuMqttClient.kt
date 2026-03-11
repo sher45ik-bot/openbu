@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import org.cygnusx1.openbu.data.FilamentProfile
+import org.json.JSONArray
 import org.json.JSONObject
 import java.io.BufferedOutputStream
 import java.io.ByteArrayOutputStream
@@ -45,6 +46,10 @@ class BambuMqttClient(
 
     @Volatile
     var debugLogging: Boolean = false
+
+    private val seenKeySignatures = mutableSetOf<String>()
+    private val _mqttDataMessages = MutableStateFlow<List<String>>(emptyList())
+    val mqttDataMessages: StateFlow<List<String>> = _mqttDataMessages.asStateFlow()
 
     private var socket: SSLSocket? = null
     private var socketOutput: OutputStream? = null
@@ -144,9 +149,44 @@ class BambuMqttClient(
             if (debugLogging) {
                 Log.d(TAG, "PUBLISH full payload:\n$payload")
             }
+            val json = JSONObject(payload)
+            val print = json.optJSONObject("print")
+            val printCmd = print?.optString("command", "") ?: ""
+            val printMsg = if (print != null && print.has("msg")) print.optInt("msg").toString() else ""
+            val infoCmd = json.optJSONObject("info")?.optString("command", "") ?: ""
+            val sig = when {
+                printCmd.isNotEmpty() -> "print.command=$printCmd|msg=$printMsg"
+                infoCmd.isNotEmpty() -> "info.command=$infoCmd"
+                else -> keySignature(json)
+            }
+            if (seenKeySignatures.add(sig)) {
+                _mqttDataMessages.value = _mqttDataMessages.value + json.toString(2)
+            }
             parseLightStatus(payload)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to parse PUBLISH", e)
+        }
+    }
+
+    private fun keySignature(obj: JSONObject): String {
+        val keys = obj.keys().asSequence().toList().sorted()
+        return keys.joinToString(",") { key ->
+            val value = obj.opt(key)
+            when (value) {
+                is JSONObject -> "$key:{${keySignature(value)}}"
+                is JSONArray -> "$key:[${arraySignature(value)}]"
+                else -> key
+            }
+        }
+    }
+
+    private fun arraySignature(arr: JSONArray): String {
+        if (arr.length() == 0) return ""
+        val first = arr.opt(0)
+        return when (first) {
+            is JSONObject -> "{${keySignature(first)}}"
+            is JSONArray -> "[${arraySignature(first)}]"
+            else -> "v"
         }
     }
 
@@ -591,6 +631,8 @@ class BambuMqttClient(
         closeSocket()
         _connected.value = false
         _lightOn.value = null
+        seenKeySignatures.clear()
+        _mqttDataMessages.value = emptyList()
     }
 
     companion object {

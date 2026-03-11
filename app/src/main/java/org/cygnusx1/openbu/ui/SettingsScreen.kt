@@ -8,8 +8,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Article
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -27,7 +30,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -43,9 +49,12 @@ fun SettingsScreen(
     onDebugLoggingChanged: (Boolean) -> Unit,
     extendedDebugLogging: Boolean,
     onExtendedDebugLoggingChanged: (Boolean) -> Unit,
+    mqttDataMessages: List<String>,
     onBack: () -> Unit,
 ) {
     var showAboutDialog by remember { mutableStateOf(false) }
+    var showMqttDataDialog by remember { mutableStateOf(false) }
+    val clipboardManager = LocalClipboardManager.current
     val context = LocalContext.current
     val versionName = remember {
         context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "Unknown"
@@ -168,7 +177,15 @@ fun SettingsScreen(
                 )
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Text(
+                text = "Debugging",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onBackground,
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
 
             // Debug logging toggle
             Row(
@@ -224,6 +241,67 @@ fun SettingsScreen(
                     enabled = debugLogging,
                 )
             }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "MQTT data",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onBackground,
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = "${mqttDataMessages.size} unique message structure(s) received",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                IconButton(onClick = { showMqttDataDialog = true }) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.Article,
+                        contentDescription = "MQTT Data",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
         }
+    }
+
+    if (showMqttDataDialog) {
+        val bodyText = if (mqttDataMessages.isEmpty()) {
+            "No messages received yet."
+        } else {
+            mqttDataMessages.joinToString("\n---\n")
+        }
+
+        AlertDialog(
+            onDismissRequest = { showMqttDataDialog = false },
+            title = { Text("${mqttDataMessages.size} unique message structure(s)") },
+            text = {
+                Text(
+                    text = bodyText,
+                    fontFamily = FontFamily.Monospace,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.verticalScroll(rememberScrollState()),
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    clipboardManager.setText(AnnotatedString(bodyText))
+                }) {
+                    Text("Copy")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showMqttDataDialog = false }) {
+                    Text("Close")
+                }
+            },
+        )
     }
 }

@@ -140,6 +140,9 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
     private val _timelapsePlaybackFile = MutableStateFlow<File?>(null)
     val timelapsePlaybackFile: StateFlow<File?> = _timelapsePlaybackFile.asStateFlow()
 
+    private val _mqttDataMessages = MutableStateFlow<List<String>>(emptyList())
+    val mqttDataMessages: StateFlow<List<String>> = _mqttDataMessages.asStateFlow()
+
     private var client: BambuCameraClient? = null
     private var streamJob: Job? = null
     private var mqttClient: BambuMqttClient? = null
@@ -388,6 +391,9 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
             launch {
                 mqtt.printerStatus.collect { _printerStatus.value = it }
             }
+            launch {
+                mqtt.mqttDataMessages.collect { _mqttDataMessages.value = it }
+            }
         }
     }
 
@@ -432,6 +438,7 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
         _fps.value = 0f
         _isLightOn.value = null
         _isMqttConnected.value = false
+        _mqttDataMessages.value = emptyList()
         _connectedSerialNumber.value = ""
         _connectedIp.value = ""
         _connectedAccessCode.value = ""

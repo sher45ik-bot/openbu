@@ -266,6 +266,7 @@ class MainActivity : ComponentActivity() {
                     connectionState == ConnectionState.Connected && showSettings -> {
                         requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
                         BackHandler { showSettings = false }
+                        val mqttDataMessages by viewModel.mqttDataMessages.collectAsState()
                         SettingsScreen(
                             keepConnectionInBackground = keepConnectionInBackground,
                             onKeepConnectionChanged = { viewModel.setKeepConnectionInBackground(it) },
@@ -277,6 +278,7 @@ class MainActivity : ComponentActivity() {
                             onDebugLoggingChanged = { viewModel.setDebugLogging(it) },
                             extendedDebugLogging = extendedDebugLogging,
                             onExtendedDebugLoggingChanged = { viewModel.setExtendedDebugLogging(it) },
+                            mqttDataMessages = mqttDataMessages,
                             onBack = { showSettings = false },
                         )
                     }
