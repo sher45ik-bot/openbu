@@ -265,7 +265,7 @@ fun DashboardScreen(
         Spacer(modifier = Modifier.height(24.dp))
 
         // Mini video preview
-        if (showMainStream) {
+        if (showMainStream && internalRtspPlayer == null) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp),
@@ -308,7 +308,7 @@ fun DashboardScreen(
         }
 
         // Internal RTSP stream (non-P1 printer built-in camera)
-        if (internalRtspPlayer != null) {
+        if (showMainStream && internalRtspPlayer != null) {
             RtspStreamCard(player = internalRtspPlayer, onClick = onOpenInternalRtspFullscreen)
             Spacer(modifier = Modifier.height(16.dp))
         }

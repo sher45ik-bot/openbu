@@ -382,7 +382,6 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
             val internalUrl = BambuCameraClient.buildRtspsUrl(ip, accessCode)
             Log.d("RTSP", "Non-MJPEG printer (serial=$serialNumber), auto-configuring RTSPS: $internalUrl")
             _internalRtspUrl.value = internalUrl
-            _showMainStream.value = false
         }
 
         // Start MQTT in separate coroutine (non-fatal)
