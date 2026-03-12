@@ -112,7 +112,8 @@ fun DashboardScreen(
     onSetFilament: (Int, Int, FilamentProfile, String) -> Unit = { _, _, _, _ -> },
 ) {
     val isP1Series = serialNumber.startsWith("01S") || serialNumber.startsWith("01P")
-    val isEnclosed = !serialNumber.startsWith("030")
+    val isA1Series = serialNumber.startsWith("030") || serialNumber.startsWith("039")
+    val isEnclosed = !isA1Series
     var showSpeedDialog by remember { mutableStateOf(false) }
     var filamentEditTarget by remember { mutableStateOf<FilamentEditTarget?>(null) }
 
@@ -173,7 +174,7 @@ fun DashboardScreen(
                     icon = { Icon(Icons.Filled.Print, contentDescription = null) },
                     modifier = Modifier.padding(horizontal = 12.dp),
                 )
-                if (isP1Series) {
+                if (isP1Series || isA1Series) {
                     NavigationDrawerItem(
                         label = { Text("File Manager") },
                         selected = false,
