@@ -291,10 +291,21 @@ fun SettingsScreen(
                 )
             },
             confirmButton = {
-                TextButton(onClick = {
-                    clipboardManager.setText(AnnotatedString(bodyText))
-                }) {
-                    Text("Copy")
+                Row {
+                    TextButton(onClick = {
+                        clipboardManager.setText(AnnotatedString(bodyText))
+                    }) {
+                        Text("Copy")
+                    }
+                    TextButton(onClick = {
+                        val redacted = Regex(""""(sn|ams_id|subtask_name)"\s*:\s*"[^"]*"""")
+                            .replace(bodyText) { match ->
+                                "\"${match.groupValues[1]}\": \"REDACTED\""
+                            }
+                        clipboardManager.setText(AnnotatedString(redacted))
+                    }) {
+                        Text("Copy Redacted")
+                    }
                 }
             },
             dismissButton = {
