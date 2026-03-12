@@ -388,6 +388,15 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
                 }
             }
             launch {
+                mqtt.connectionError.collect { error ->
+                    if (error != null && !userDisconnected) {
+                        _errorMessage.value = error
+                        _connectionState.value = ConnectionState.Error
+                        cleanupConnections()
+                    }
+                }
+            }
+            launch {
                 mqtt.lightOn.collect { _isLightOn.value = it }
             }
             launch {

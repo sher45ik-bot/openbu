@@ -41,6 +41,9 @@ class BambuMqttClient(
     private val _connected = MutableStateFlow(false)
     val connected: StateFlow<Boolean> = _connected.asStateFlow()
 
+    private val _connectionError = MutableStateFlow<String?>(null)
+    val connectionError: StateFlow<String?> = _connectionError.asStateFlow()
+
     private val _printerStatus = MutableStateFlow(PrinterStatus())
     val printerStatus: StateFlow<PrinterStatus> = _printerStatus.asStateFlow()
 
@@ -82,6 +85,11 @@ class BambuMqttClient(
                 }
                 val returnCode = connackData[1].toInt() and 0xFF
                 if (returnCode != 0) {
+                    val reason = when (returnCode) {
+                        4, 5 -> "Access code rejected by printer"
+                        else -> "Connection refused (code $returnCode)"
+                    }
+                    _connectionError.value = reason
                     throw IOException("CONNACK rejected: return code $returnCode")
                 }
                 if (debugLogging) Log.d(TAG, "MQTT CONNACK OK")
@@ -630,6 +638,7 @@ class BambuMqttClient(
     fun close() {
         closeSocket()
         _connected.value = false
+        _connectionError.value = null
         _lightOn.value = null
         seenKeySignatures.clear()
         _mqttDataMessages.value = emptyList()

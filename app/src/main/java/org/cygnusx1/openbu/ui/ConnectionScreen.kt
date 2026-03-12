@@ -87,8 +87,9 @@ fun ConnectionScreen(
 
     val selectedPrinter = discoveredPrinters.firstOrNull { it.serialNumber == selectedSerial }
     val selectedSavedPrinter = savedPrinters.firstOrNull { it.serialNumber == selectedSerial }
-    val canConnectAuto = (selectedPrinter != null || selectedSavedPrinter != null) && accessCode.isNotBlank()
-    val canConnectManual = ip.isNotBlank() && accessCode.isNotBlank() && serialValid
+    val accessCodeValid = accessCode.length == 8
+    val canConnectAuto = (selectedPrinter != null || selectedSavedPrinter != null) && accessCodeValid
+    val canConnectManual = ip.isNotBlank() && accessCodeValid && serialValid
     val canConnect = if (manualMode) canConnectManual else canConnectAuto
 
     DisposableEffect(Unit) {
@@ -161,6 +162,12 @@ fun ConnectionScreen(
                 value = accessCode,
                 onValueChange = { accessCode = it.trim() },
                 label = { Text("Access Code") },
+                isError = accessCode.isNotBlank() && !accessCodeValid,
+                supportingText = {
+                    if (accessCode.isNotBlank() && !accessCodeValid) {
+                        Text("Must be exactly 8 characters (currently ${accessCode.length})", color = Color.Red)
+                    }
+                },
                 singleLine = true,
                 colors = textFieldColors,
                 visualTransformation = if (accessCodeVisible) VisualTransformation.None else PasswordVisualTransformation(),
@@ -307,6 +314,12 @@ fun ConnectionScreen(
                     value = accessCode,
                     onValueChange = { accessCode = it.trim() },
                     label = { Text("Access Code") },
+                    isError = accessCode.isNotBlank() && !accessCodeValid,
+                    supportingText = {
+                        if (accessCode.isNotBlank() && !accessCodeValid) {
+                            Text("Must be exactly 8 characters (currently ${accessCode.length})", color = Color.Red)
+                        }
+                    },
                     singleLine = true,
                     colors = textFieldColors,
                     visualTransformation = if (accessCodeVisible) VisualTransformation.None else PasswordVisualTransformation(),
