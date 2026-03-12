@@ -10,6 +10,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import org.cygnusx1.openbu.data.FilamentProfile
+import org.cygnusx1.openbu.data.printerSeriesFromSerial
 import org.cygnusx1.openbu.network.BambuCameraClient
 import org.cygnusx1.openbu.network.BambuFtpsClient
 import org.cygnusx1.openbu.network.BambuMqttClient
@@ -278,7 +279,7 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
     }
 
     private fun usesMjpegCamera(serial: String): Boolean =
-        serial.startsWith("01S") || serial.startsWith("01P")
+        printerSeriesFromSerial(serial).usesMjpegCamera
 
     fun connect(ip: String, accessCode: String, serialNumber: String) {
         if (_connectionState.value == ConnectionState.Connecting ||

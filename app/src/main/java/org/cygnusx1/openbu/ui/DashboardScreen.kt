@@ -1,6 +1,8 @@
 package org.cygnusx1.openbu.ui
 
 import android.graphics.Bitmap
+import org.cygnusx1.openbu.data.PrinterSeries
+import org.cygnusx1.openbu.data.printerSeriesFromSerial
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -111,9 +113,8 @@ fun DashboardScreen(
     filaments: List<FilamentProfile> = emptyList(),
     onSetFilament: (Int, Int, FilamentProfile, String) -> Unit = { _, _, _, _ -> },
 ) {
-    val isP1Series = serialNumber.startsWith("01S") || serialNumber.startsWith("01P")
-    val isA1Series = serialNumber.startsWith("030") || serialNumber.startsWith("039")
-    val isEnclosed = !isA1Series
+    val series = printerSeriesFromSerial(serialNumber)
+    val isEnclosed = series.isEnclosed
     var showSpeedDialog by remember { mutableStateOf(false) }
     var filamentEditTarget by remember { mutableStateOf<FilamentEditTarget?>(null) }
 
@@ -174,7 +175,7 @@ fun DashboardScreen(
                     icon = { Icon(Icons.Filled.Print, contentDescription = null) },
                     modifier = Modifier.padding(horizontal = 12.dp),
                 )
-                if (isP1Series || isA1Series) {
+                if (series == PrinterSeries.P1 || series == PrinterSeries.A1) {
                     NavigationDrawerItem(
                         label = { Text("File Manager") },
                         selected = false,

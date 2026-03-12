@@ -1,5 +1,7 @@
 package org.cygnusx1.openbu.ui
 
+import org.cygnusx1.openbu.data.PrinterSeries
+import org.cygnusx1.openbu.data.printerSeriesFromSerial
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -79,7 +81,7 @@ fun ConnectionScreen(
     val textFieldColors = OutlinedTextFieldDefaults.colors()
 
     val isSerialLengthValid = serialNumber.length in 15..16
-    val hasValidSerialPrefix = listOf("00M", "03W", "01P", "01S", "030", "039", "22E", "31B", "094", "239", "093").any { serialNumber.startsWith(it) }
+    val hasValidSerialPrefix = printerSeriesFromSerial(serialNumber) != PrinterSeries.UNKNOWN
     val serialValid = isSerialLengthValid && hasValidSerialPrefix
 
     val savedSerials = savedPrinters.map { it.serialNumber }.toSet()
