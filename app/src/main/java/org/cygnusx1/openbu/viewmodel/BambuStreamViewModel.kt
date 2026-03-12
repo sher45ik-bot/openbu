@@ -147,6 +147,25 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
     private val _mqttDataMessages = MutableStateFlow<List<String>>(emptyList())
     val mqttDataMessages: StateFlow<List<String>> = _mqttDataMessages.asStateFlow()
 
+    private val _logcatText = MutableStateFlow("")
+    val logcatText: StateFlow<String> = _logcatText.asStateFlow()
+
+    val connectedAccessCode: StateFlow<String> = _connectedAccessCode.asStateFlow()
+
+    fun captureLogcat() {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val pid = android.os.Process.myPid()
+                val process = Runtime.getRuntime().exec(arrayOf("logcat", "-d", "--pid=$pid"))
+                val text = process.inputStream.bufferedReader().readText()
+                process.waitFor()
+                _logcatText.value = text
+            } catch (e: Exception) {
+                _logcatText.value = "Failed to capture logcat: ${e.message}"
+            }
+        }
+    }
+
     private var client: BambuCameraClient? = null
     private var streamJob: Job? = null
     private var mqttClient: BambuMqttClient? = null

@@ -282,6 +282,8 @@ class MainActivity : ComponentActivity() {
                         requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
                         BackHandler { showSettings = false }
                         val mqttDataMessages by viewModel.mqttDataMessages.collectAsState()
+                        val logcatText by viewModel.logcatText.collectAsState()
+                        val accessCode by viewModel.connectedAccessCode.collectAsState()
                         SettingsScreen(
                             keepConnectionInBackground = keepConnectionInBackground,
                             onKeepConnectionChanged = { viewModel.setKeepConnectionInBackground(it) },
@@ -294,6 +296,10 @@ class MainActivity : ComponentActivity() {
                             extendedDebugLogging = extendedDebugLogging,
                             onExtendedDebugLoggingChanged = { viewModel.setExtendedDebugLogging(it) },
                             mqttDataMessages = mqttDataMessages,
+                            logcatText = logcatText,
+                            accessCode = accessCode,
+                            serialNumber = connectedSerialNumber,
+                            onCaptureLogcat = { viewModel.captureLogcat() },
                             onBack = { showSettings = false },
                         )
                     }

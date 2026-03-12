@@ -50,10 +50,15 @@ fun SettingsScreen(
     extendedDebugLogging: Boolean,
     onExtendedDebugLoggingChanged: (Boolean) -> Unit,
     mqttDataMessages: List<String>,
+    logcatText: String,
+    accessCode: String,
+    serialNumber: String,
+    onCaptureLogcat: () -> Unit,
     onBack: () -> Unit,
 ) {
     var showAboutDialog by remember { mutableStateOf(false) }
     var showMqttDataDialog by remember { mutableStateOf(false) }
+    var showLogcatDialog by remember { mutableStateOf(false) }
     val clipboardManager = LocalClipboardManager.current
     val context = LocalContext.current
     val versionName = remember {
@@ -269,6 +274,37 @@ fun SettingsScreen(
                     )
                 }
             }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Logcat",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onBackground,
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = "Capture and view app logs",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                IconButton(onClick = {
+                    onCaptureLogcat()
+                    showLogcatDialog = true
+                }) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.Article,
+                        contentDescription = "Logcat",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
         }
     }
 
@@ -310,6 +346,49 @@ fun SettingsScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showMqttDataDialog = false }) {
+                    Text("Close")
+                }
+            },
+        )
+    }
+
+    if (showLogcatDialog) {
+        val bodyText = logcatText.ifEmpty { "No logs captured yet." }
+
+        AlertDialog(
+            onDismissRequest = { showLogcatDialog = false },
+            title = { Text("Logcat") },
+            text = {
+                Text(
+                    text = bodyText,
+                    fontFamily = FontFamily.Monospace,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.verticalScroll(rememberScrollState()),
+                )
+            },
+            confirmButton = {
+                Row {
+                    TextButton(onClick = {
+                        clipboardManager.setText(AnnotatedString(bodyText))
+                    }) {
+                        Text("Copy")
+                    }
+                    TextButton(onClick = {
+                        var redacted = bodyText
+                        if (accessCode.isNotEmpty()) {
+                            redacted = redacted.replace(accessCode, "REDACTED")
+                        }
+                        if (serialNumber.isNotEmpty()) {
+                            redacted = redacted.replace(serialNumber, "REDACTED")
+                        }
+                        clipboardManager.setText(AnnotatedString(redacted))
+                    }) {
+                        Text("Copy Redacted")
+                    }
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showLogcatDialog = false }) {
                     Text("Close")
                 }
             },
