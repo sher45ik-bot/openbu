@@ -111,6 +111,7 @@ fun DashboardScreen(
     filaments: List<FilamentProfile> = emptyList(),
     onSetFilament: (Int, Int, FilamentProfile, String) -> Unit = { _, _, _, _ -> },
 ) {
+    val isP1Series = serialNumber.startsWith("01S") || serialNumber.startsWith("01P")
     val isEnclosed = !serialNumber.startsWith("030")
     var showSpeedDialog by remember { mutableStateOf(false) }
     var filamentEditTarget by remember { mutableStateOf<FilamentEditTarget?>(null) }
@@ -172,26 +173,28 @@ fun DashboardScreen(
                     icon = { Icon(Icons.Filled.Print, contentDescription = null) },
                     modifier = Modifier.padding(horizontal = 12.dp),
                 )
-                NavigationDrawerItem(
-                    label = { Text("File Manager") },
-                    selected = false,
-                    onClick = {
-                        scope.launch { drawerState.close() }
-                        onOpenFileManager()
-                    },
-                    icon = { Icon(Icons.Filled.Folder, contentDescription = null) },
-                    modifier = Modifier.padding(horizontal = 12.dp),
-                )
-                NavigationDrawerItem(
-                    label = { Text("Timelapses") },
-                    selected = false,
-                    onClick = {
-                        scope.launch { drawerState.close() }
-                        onOpenTimelapse()
-                    },
-                    icon = { Icon(Icons.Filled.Videocam, contentDescription = null) },
-                    modifier = Modifier.padding(horizontal = 12.dp),
-                )
+                if (isP1Series) {
+                    NavigationDrawerItem(
+                        label = { Text("File Manager") },
+                        selected = false,
+                        onClick = {
+                            scope.launch { drawerState.close() }
+                            onOpenFileManager()
+                        },
+                        icon = { Icon(Icons.Filled.Folder, contentDescription = null) },
+                        modifier = Modifier.padding(horizontal = 12.dp),
+                    )
+                    NavigationDrawerItem(
+                        label = { Text("Timelapses") },
+                        selected = false,
+                        onClick = {
+                            scope.launch { drawerState.close() }
+                            onOpenTimelapse()
+                        },
+                        icon = { Icon(Icons.Filled.Videocam, contentDescription = null) },
+                        modifier = Modifier.padding(horizontal = 12.dp),
+                    )
+                }
                 HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
                 NavigationDrawerItem(
                     label = { Text("Settings") },
