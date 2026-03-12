@@ -96,6 +96,7 @@ class MainActivity : ComponentActivity() {
                 val printerStatus by viewModel.printerStatus.collectAsState()
                 val keepConnectionInBackground by viewModel.keepConnectionInBackground.collectAsState()
                 val showMainStream by viewModel.showMainStream.collectAsState()
+                val internalRtspUrl by viewModel.internalRtspUrl.collectAsState()
                 val rtspEnabled by viewModel.rtspEnabled.collectAsState()
                 val rtspUrl by viewModel.rtspUrl.collectAsState()
                 val debugLogging by viewModel.debugLogging.collectAsState()
@@ -106,60 +107,74 @@ class MainActivity : ComponentActivity() {
 
                 var showFullscreen by rememberSaveable { mutableStateOf(false) }
                 var showRtspFullscreen by rememberSaveable { mutableStateOf(false) }
+                var showInternalRtspFullscreen by rememberSaveable { mutableStateOf(false) }
                 var showSettings by rememberSaveable { mutableStateOf(false) }
                 var showPrinterSettings by rememberSaveable { mutableStateOf(false) }
                 var showFileManager by rememberSaveable { mutableStateOf(false) }
                 var showTimelapse by rememberSaveable { mutableStateOf(false) }
                 val effectiveRtspUrl = if (rtspEnabled && rtspUrl.isNotBlank()) rtspUrl else ""
 
-                // Shared ExoPlayer for RTSP — survives screen transitions
+                // Helper to build an ExoPlayer for an RTSP/RTSPS URL
+                @OptIn(UnstableApi::class)
+                fun createRtspPlayer(url: String, tag: String): ExoPlayer {
+                    val isRtsps = url.startsWith("rtsps://")
+                    Log.d(tag, "Creating player: isRtsps=$isRtsps, url=$url")
+                    return ExoPlayer.Builder(this@MainActivity).build().apply {
+                        addListener(object : Player.Listener {
+                            override fun onPlaybackStateChanged(playbackState: Int) {
+                                val stateName = when (playbackState) {
+                                    Player.STATE_IDLE -> "IDLE"
+                                    Player.STATE_BUFFERING -> "BUFFERING"
+                                    Player.STATE_READY -> "READY"
+                                    Player.STATE_ENDED -> "ENDED"
+                                    else -> "UNKNOWN($playbackState)"
+                                }
+                                Log.d(tag, "Playback state: $stateName")
+                            }
+                            override fun onPlayerError(error: PlaybackException) {
+                                Log.e(tag, "Player error: ${error.errorCodeName} (${error.errorCode})", error)
+                            }
+                            override fun onIsPlayingChanged(isPlaying: Boolean) {
+                                Log.d(tag, "isPlaying=$isPlaying")
+                            }
+                            override fun onRenderedFirstFrame() {
+                                Log.d(tag, "First frame rendered")
+                            }
+                        })
+                        val factory = RtspMediaSource.Factory().apply {
+                            if (isRtsps) {
+                                val trustAll = arrayOf<TrustManager>(object : X509TrustManager {
+                                    override fun checkClientTrusted(chain: Array<X509Certificate>, authType: String) {}
+                                    override fun checkServerTrusted(chain: Array<X509Certificate>, authType: String) {}
+                                    override fun getAcceptedIssuers(): Array<X509Certificate> = emptyArray()
+                                })
+                                val sslContext = SSLContext.getInstance("TLS")
+                                sslContext.init(null, trustAll, java.security.SecureRandom())
+                                Log.d(tag, "Using trust-all SSLSocketFactory + forceRtpTcp")
+                                setSocketFactory(sslContext.socketFactory)
+                                setForceUseRtpTcp(true)
+                            }
+                        }
+                        val mediaSource = factory.createMediaSource(MediaItem.fromUri(url))
+                        setMediaSource(mediaSource)
+                        prepare()
+                        playWhenReady = true
+                    }
+                }
+
+                // Internal RTSP player (non-P1 printer built-in camera)
+                @OptIn(UnstableApi::class)
+                val internalRtspPlayer = remember(internalRtspUrl) {
+                    if (internalRtspUrl.isNotBlank()) createRtspPlayer(internalRtspUrl, "RTSP-Internal") else null
+                }
+                DisposableEffect(internalRtspUrl) {
+                    onDispose { internalRtspPlayer?.release() }
+                }
+
+                // External RTSP player (user-configured secondary camera)
                 @OptIn(UnstableApi::class)
                 val rtspPlayer = remember(effectiveRtspUrl) {
-                    if (effectiveRtspUrl.isNotBlank()) {
-                        val isRtsps = effectiveRtspUrl.startsWith("rtsps://")
-                        Log.d("RTSP", "Creating player: isRtsps=$isRtsps, url=$effectiveRtspUrl")
-                        ExoPlayer.Builder(this@MainActivity).build().apply {
-                            addListener(object : Player.Listener {
-                                override fun onPlaybackStateChanged(playbackState: Int) {
-                                    val stateName = when (playbackState) {
-                                        Player.STATE_IDLE -> "IDLE"
-                                        Player.STATE_BUFFERING -> "BUFFERING"
-                                        Player.STATE_READY -> "READY"
-                                        Player.STATE_ENDED -> "ENDED"
-                                        else -> "UNKNOWN($playbackState)"
-                                    }
-                                    Log.d("RTSP", "Playback state: $stateName")
-                                }
-                                override fun onPlayerError(error: PlaybackException) {
-                                    Log.e("RTSP", "Player error: ${error.errorCodeName} (${error.errorCode})", error)
-                                }
-                                override fun onIsPlayingChanged(isPlaying: Boolean) {
-                                    Log.d("RTSP", "isPlaying=$isPlaying")
-                                }
-                                override fun onRenderedFirstFrame() {
-                                    Log.d("RTSP", "First frame rendered")
-                                }
-                            })
-                            val factory = RtspMediaSource.Factory().apply {
-                                if (isRtsps) {
-                                    val trustAll = arrayOf<TrustManager>(object : X509TrustManager {
-                                        override fun checkClientTrusted(chain: Array<X509Certificate>, authType: String) {}
-                                        override fun checkServerTrusted(chain: Array<X509Certificate>, authType: String) {}
-                                        override fun getAcceptedIssuers(): Array<X509Certificate> = emptyArray()
-                                    })
-                                    val sslContext = SSLContext.getInstance("TLS")
-                                    sslContext.init(null, trustAll, java.security.SecureRandom())
-                                    Log.d("RTSP", "Using trust-all SSLSocketFactory + forceRtpTcp")
-                                    setSocketFactory(sslContext.socketFactory)
-                                    setForceUseRtpTcp(true)
-                                }
-                            }
-                            val mediaSource = factory.createMediaSource(MediaItem.fromUri(effectiveRtspUrl))
-                            setMediaSource(mediaSource)
-                            prepare()
-                            playWhenReady = true
-                        }
-                    } else null
+                    if (effectiveRtspUrl.isNotBlank()) createRtspPlayer(effectiveRtspUrl, "RTSP-External") else null
                 }
                 DisposableEffect(effectiveRtspUrl) {
                     onDispose { rtspPlayer?.release() }
@@ -313,6 +328,15 @@ class MainActivity : ComponentActivity() {
                             fps = fps,
                         )
                     }
+                    connectionState == ConnectionState.Connected && showInternalRtspFullscreen && internalRtspUrl.isNotBlank() -> {
+                        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR
+                        BackHandler {
+                            showInternalRtspFullscreen = false
+                            requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+                        }
+                        RtspStreamScreen(player = internalRtspPlayer)
+                    }
                     connectionState == ConnectionState.Connected && showRtspFullscreen && effectiveRtspUrl.isNotBlank() -> {
                         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
                         requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR
@@ -328,6 +352,7 @@ class MainActivity : ComponentActivity() {
                         BackHandler {
                             showFullscreen = false
                             showRtspFullscreen = false
+                            showInternalRtspFullscreen = false
                             showSettings = false
                             showPrinterSettings = false
                             showFileManager = false
@@ -354,9 +379,11 @@ class MainActivity : ComponentActivity() {
                             printerName = printerName,
                             serialNumber = connectedSerialNumber,
                             showMainStream = showMainStream,
+                            internalRtspPlayer = internalRtspPlayer,
                             rtspPlayer = rtspPlayer,
                             onToggleLight = { viewModel.toggleLight(it) },
                             onOpenFullscreen = { showFullscreen = true },
+                            onOpenInternalRtspFullscreen = { showInternalRtspFullscreen = true },
                             onOpenRtspFullscreen = { showRtspFullscreen = true },
                             onOpenSettings = { showSettings = true },
                             onOpenPrinterSettings = { showPrinterSettings = true },
@@ -381,6 +408,7 @@ class MainActivity : ComponentActivity() {
                         requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
                         showFullscreen = false
                         showRtspFullscreen = false
+                        showInternalRtspFullscreen = false
                         showSettings = false
                         showPrinterSettings = false
                         showFileManager = false

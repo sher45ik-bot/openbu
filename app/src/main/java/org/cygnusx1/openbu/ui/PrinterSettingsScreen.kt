@@ -143,24 +143,23 @@ fun PrinterSettingsScreen(
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "Save",
+                        text = "Save printer",
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onBackground,
                     )
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
-                        text = "Save this printer",
+                        text = "Remember this printer for quick connect",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                Button(
-                    onClick = {
-                        if (isSaved) showDeleteConfirmation = true else onSavePrinter()
+                Switch(
+                    checked = isSaved,
+                    onCheckedChange = { checked ->
+                        if (checked) onSavePrinter() else showDeleteConfirmation = true
                     },
-                ) {
-                    Text(if (isSaved) "Saved" else "Save")
-                }
+                )
             }
 
             Spacer(modifier = Modifier.height(16.dp))

@@ -96,9 +96,11 @@ fun DashboardScreen(
     printerName: String,
     serialNumber: String,
     showMainStream: Boolean,
+    internalRtspPlayer: ExoPlayer?,
     rtspPlayer: ExoPlayer?,
     onToggleLight: (Boolean) -> Unit,
     onOpenFullscreen: () -> Unit,
+    onOpenInternalRtspFullscreen: () -> Unit,
     onOpenRtspFullscreen: () -> Unit,
     onOpenSettings: () -> Unit,
     onOpenPrinterSettings: () -> Unit,
@@ -297,6 +299,12 @@ fun DashboardScreen(
                 }
             }
 
+            Spacer(modifier = Modifier.height(16.dp))
+        }
+
+        // Internal RTSP stream (non-P1 printer built-in camera)
+        if (internalRtspPlayer != null) {
+            RtspStreamCard(player = internalRtspPlayer, onClick = onOpenInternalRtspFullscreen)
             Spacer(modifier = Modifier.height(16.dp))
         }
 

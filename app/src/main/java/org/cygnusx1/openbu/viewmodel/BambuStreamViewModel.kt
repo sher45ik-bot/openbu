@@ -67,6 +67,9 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
     private val _showMainStream = MutableStateFlow(true)
     val showMainStream: StateFlow<Boolean> = _showMainStream.asStateFlow()
 
+    private val _internalRtspUrl = MutableStateFlow("")
+    val internalRtspUrl: StateFlow<String> = _internalRtspUrl.asStateFlow()
+
     private val _rtspEnabled = MutableStateFlow(false)
     val rtspEnabled: StateFlow<Boolean> = _rtspEnabled.asStateFlow()
 
@@ -356,10 +359,9 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
                 }
             }
         } else {
-            val rtspUrl = BambuCameraClient.buildRtspsUrl(ip, accessCode)
-            Log.d("RTSP", "Non-MJPEG printer (serial=$serialNumber), auto-configuring RTSPS: $rtspUrl")
-            _rtspEnabled.value = true
-            _rtspUrl.value = rtspUrl
+            val internalUrl = BambuCameraClient.buildRtspsUrl(ip, accessCode)
+            Log.d("RTSP", "Non-MJPEG printer (serial=$serialNumber), auto-configuring RTSPS: $internalUrl")
+            _internalRtspUrl.value = internalUrl
             _showMainStream.value = false
         }
 
@@ -442,6 +444,7 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
         _connectedSerialNumber.value = ""
         _connectedIp.value = ""
         _connectedAccessCode.value = ""
+        _internalRtspUrl.value = ""
         _rtspEnabled.value = false
         _rtspUrl.value = ""
         _showMainStream.value = prefs.getBoolean("show_main_stream", true)
