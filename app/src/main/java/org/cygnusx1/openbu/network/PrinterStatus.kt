@@ -26,9 +26,10 @@ data class PrinterStatus(
     val nozzleTargetTemper: Float = 0f,
     val bedTemper: Float = 0f,
     val bedTargetTemper: Float = 0f,
-    val heatbreakFanSpeed: String = "0",
-    val coolingFanSpeed: String = "0",
-    val bigFan1Speed: String = "0",
+    val heatbreakFanSpeed: Int = 0,
+    val coolingFanSpeed: Int = 0,
+    val bigFan1Speed: Int = 0,
+    val bigFan2Speed: Int = 0,
     val amsUnits: List<AmsUnit> = emptyList(),
     val vtTray: AmsTray? = null,
     val spdLvl: Int = 2, // 2 = Normal = 100%

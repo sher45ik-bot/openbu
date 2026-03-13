@@ -11,6 +11,8 @@ import kotlinx.coroutines.launch
 import org.cygnusx1.openbu.data.FilamentProfile
 import org.json.JSONArray
 import org.json.JSONObject
+import kotlin.math.floor
+import kotlin.math.roundToInt
 import java.io.BufferedOutputStream
 import java.io.ByteArrayOutputStream
 import java.io.DataInputStream
@@ -436,9 +438,26 @@ class BambuMqttClient(
         val nozzleTarget = if (print.has("nozzle_target_temper")) print.optDouble("nozzle_target_temper").toFloat() else current.nozzleTargetTemper
         val bedTemper = if (print.has("bed_temper")) print.optDouble("bed_temper").toFloat() else current.bedTemper
         val bedTarget = if (print.has("bed_target_temper")) print.optDouble("bed_target_temper").toFloat() else current.bedTargetTemper
-        val heatbreakFan = print.optString("heatbreak_fan_speed", "").ifEmpty { current.heatbreakFanSpeed }
-        val coolingFan = print.optString("cooling_fan_speed", "").ifEmpty { current.coolingFanSpeed }
-        val bigFan1 = print.optString("big_fan1_speed", "").ifEmpty { current.bigFan1Speed }
+        // fan_gear packs 0-255 PWM values: bits 0-7 cooling, 8-15 big_fan1, 16-23 big_fan2
+        val heatbreakFan: Int
+        val coolingFan: Int
+        val bigFan1: Int
+        val bigFan2: Int
+        if (print.has("fan_gear")) {
+            val fanGear = print.optLong("fan_gear")
+            coolingFan = (fanGear and 0xFF).toInt()
+            bigFan1 = ((fanGear shr 8) and 0xFF).toInt()
+            bigFan2 = ((fanGear shr 16) and 0xFF).toInt()
+            heatbreakFan = if (print.has("heatbreak_fan_speed")) {
+                fanSpeedToInt(print.optString("heatbreak_fan_speed", ""))
+            } else current.heatbreakFanSpeed
+        } else {
+            coolingFan = if (print.has("cooling_fan_speed")) fanSpeedToInt(print.optString("cooling_fan_speed", "")) else current.coolingFanSpeed
+            bigFan1 = if (print.has("big_fan1_speed")) fanSpeedToInt(print.optString("big_fan1_speed", "")) else current.bigFan1Speed
+            bigFan2 = if (print.has("big_fan2_speed")) fanSpeedToInt(print.optString("big_fan2_speed", "")) else current.bigFan2Speed
+            heatbreakFan = if (print.has("heatbreak_fan_speed")) fanSpeedToInt(print.optString("heatbreak_fan_speed", "")) else current.heatbreakFanSpeed
+        }
+
         // Log all keys containing "spd" or "speed" to find the correct field name
         val speedKeys = print.keys().asSequence().filter {
             it.contains("spd", ignoreCase = true) || it.contains("speed", ignoreCase = true)
@@ -520,6 +539,7 @@ class BambuMqttClient(
             heatbreakFanSpeed = heatbreakFan,
             coolingFanSpeed = coolingFan,
             bigFan1Speed = bigFan1,
+            bigFan2Speed = bigFan2,
             amsUnits = amsUnits,
             vtTray = vtTray,
             spdLvl = spdLvl,
@@ -642,6 +662,12 @@ class BambuMqttClient(
         _lightOn.value = null
         seenKeySignatures.clear()
         _mqttDataMessages.value = emptyList()
+    }
+
+    /** Convert 0-15 string fan speed to 0-255 using BambuStudio's formula */
+    private fun fanSpeedToInt(raw: String): Int {
+        val value = raw.toIntOrNull() ?: return 0
+        return (floor(value / 1.5f) * 25.5f).roundToInt()
     }
 
     companion object {

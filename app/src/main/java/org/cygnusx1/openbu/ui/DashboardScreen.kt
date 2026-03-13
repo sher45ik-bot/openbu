@@ -381,20 +381,20 @@ fun DashboardScreen(
             IconStatusCard(
                 title = "Part fan",
                 iconRes = R.drawable.ic_part_fan,
-                value = "${fanSpeedPercent(printerStatus.heatbreakFanSpeed)}%",
+                value = "${fanSpeedPercent(printerStatus.coolingFanSpeed)}%",
                 modifier = Modifier.weight(1f),
             )
             if (isEnclosed) {
                 IconStatusCard(
                     title = "Aux fan",
                     iconRes = R.drawable.ic_aux_fan,
-                    value = "${fanSpeedPercent(printerStatus.coolingFanSpeed)}%",
+                    value = "${fanSpeedPercent(printerStatus.bigFan1Speed)}%",
                     modifier = Modifier.weight(1f),
                 )
                 IconStatusCard(
                     title = "Chamber fan",
                     iconRes = R.drawable.ic_chamber_fan,
-                    value = "${fanSpeedPercent(printerStatus.bigFan1Speed)}%",
+                    value = "${fanSpeedPercent(printerStatus.bigFan2Speed)}%",
                     modifier = Modifier.weight(1f),
                 )
             }
@@ -983,10 +983,10 @@ private fun FilamentEditDialog(
     )
 }
 
-private fun fanSpeedPercent(raw: String): Int {
-    val value = raw.toIntOrNull() ?: return 0
-    // Bambu reports fan speed as 0-15, map to percentage
-    return ((value / 15.0) * 100).toInt()
+private fun fanSpeedPercent(value: Int): Int {
+    // Fan speeds are 0-255 PWM values, convert to 0-100% matching BambuStudio's display
+    // BambuStudio rounds to nearest 10%: round(value / 25.5) * 10
+    return (kotlin.math.round(value / 25.5f) * 10).toInt()
 }
 
 @Composable
