@@ -23,6 +23,7 @@ import org.cygnusx1.openbu.service.ConnectionForegroundService
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -178,6 +179,18 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
     private var timelapseThumbnailJob: Job? = null
     @Volatile private var timelapseDownloadCancelled = false
     private var userDisconnected = false
+    private var reconnectJob: Job? = null
+    private var reconnectRetryCount = 0
+    private val maxReconnectRetries = 5
+
+    private val _isReconnecting = MutableStateFlow(false)
+    val isReconnecting: StateFlow<Boolean> = _isReconnecting.asStateFlow()
+
+    private val _hasLastConnectedPrinter = MutableStateFlow(false)
+    val hasLastConnectedPrinter: StateFlow<Boolean> = _hasLastConnectedPrinter.asStateFlow()
+
+    private val _rtspReconnectKey = MutableStateFlow(0)
+    val rtspReconnectKey: StateFlow<Int> = _rtspReconnectKey.asStateFlow()
 
     private val prefs by lazy {
         val masterKey = MasterKey.Builder(application)
@@ -208,6 +221,18 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
         }
 
         loadSavedPrinters()
+
+        // Auto-reconnect to last-connected printer
+        val lastSerial = prefs.getString("last_connected_serial", "") ?: ""
+        val lastIp = prefs.getString("last_connected_ip", "") ?: ""
+        val lastAccessCode = if (lastSerial.isNotBlank()) getSavedAccessCode(lastSerial) else ""
+        if (lastSerial.isNotBlank() && lastIp.isNotBlank() && lastAccessCode.isNotBlank()) {
+            _hasLastConnectedPrinter.value = true
+            _isReconnecting.value = true
+            _connectedSerialNumber.value = lastSerial
+            loadPerPrinterSettings(lastSerial)
+            connect(lastIp, lastAccessCode, lastSerial)
+        }
     }
 
     fun setKeepConnectionInBackground(enabled: Boolean) {
@@ -322,6 +347,8 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
         }
 
         userDisconnected = false
+        reconnectJob?.cancel()
+        reconnectJob = null
         saveCredentials(ip, accessCode, serialNumber)
         _connectedIp.value = ip
         _connectedAccessCode.value = accessCode
@@ -329,6 +356,13 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
         loadPerPrinterSettings(serialNumber)
         _connectionState.value = ConnectionState.Connecting
         _errorMessage.value = null
+
+        // Persist last-connected printer for auto-reconnect
+        prefs.edit()
+            .putString("last_connected_serial", serialNumber)
+            .putString("last_connected_ip", ip)
+            .apply()
+        _hasLastConnectedPrinter.value = true
 
         if (usesMjpegCamera(serialNumber)) {
             _showMainStream.value = prefs.getBoolean("show_main_stream", true)
@@ -344,6 +378,8 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
                     bambuClient.frameFlow().collect { bitmap ->
                         if (_connectionState.value != ConnectionState.Connected) {
                             _connectionState.value = ConnectionState.Connected
+                            _isReconnecting.value = false
+                            reconnectRetryCount = 0
                             if (_keepConnectionInBackground.value) {
                                 val app = getApplication<Application>()
                                 app.startForegroundService(Intent(app, ConnectionForegroundService::class.java))
@@ -374,6 +410,7 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
                             _errorMessage.value = "Connection to printer failed"
                             _connectionState.value = ConnectionState.Error
                             cleanupConnections()
+                            scheduleReconnect()
                         }
                     }
                 }
@@ -399,6 +436,8 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
                         _connectionState.value == ConnectionState.Connecting
                     ) {
                         _connectionState.value = ConnectionState.Connected
+                        _isReconnecting.value = false
+                        reconnectRetryCount = 0
                         if (_keepConnectionInBackground.value) {
                             val app = getApplication<Application>()
                             app.startForegroundService(Intent(app, ConnectionForegroundService::class.java))
@@ -412,6 +451,7 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
                         _errorMessage.value = error
                         _connectionState.value = ConnectionState.Error
                         cleanupConnections()
+                        scheduleReconnect()
                     }
                 }
             }
@@ -469,15 +509,61 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
         _isLightOn.value = null
         _isMqttConnected.value = false
         _mqttDataMessages.value = emptyList()
+        _internalRtspUrl.value = ""
+    }
+
+    private fun fullCleanup() {
+        cleanupConnections()
         _connectedSerialNumber.value = ""
         _connectedIp.value = ""
         _connectedAccessCode.value = ""
-        _internalRtspUrl.value = ""
         _rtspEnabled.value = false
         _rtspUrl.value = ""
         _showMainStream.value = prefs.getBoolean("show_main_stream", true)
         _customBgColor.value = null
         _customPrinterName.value = ""
+    }
+
+    private fun scheduleReconnect() {
+        if (userDisconnected) return
+        val ip = _connectedIp.value
+        val code = _connectedAccessCode.value
+        val serial = _connectedSerialNumber.value
+        if (ip.isBlank() || code.isBlank() || serial.isBlank()) return
+        if (reconnectRetryCount >= maxReconnectRetries) {
+            _isReconnecting.value = false
+            _hasLastConnectedPrinter.value = false
+            prefs.edit().remove("last_connected_serial").remove("last_connected_ip").apply()
+            fullCleanup()
+            _errorMessage.value = "Failed to reconnect after $maxReconnectRetries attempts"
+            _connectionState.value = ConnectionState.Error
+            return
+        }
+        _isReconnecting.value = true
+        reconnectRetryCount++
+        reconnectJob?.cancel()
+        reconnectJob = viewModelScope.launch {
+            delay(3000)
+            _connectionState.value = ConnectionState.Disconnected
+            _errorMessage.value = null
+            connect(ip, code, serial)
+        }
+    }
+
+    fun reconnect() {
+        reconnectJob?.cancel()
+        reconnectJob = null
+        val ip = _connectedIp.value
+        val code = _connectedAccessCode.value
+        val serial = _connectedSerialNumber.value
+        if (ip.isBlank() || code.isBlank() || serial.isBlank()) return
+        cleanupConnections()
+        _rtspReconnectKey.value++
+        reconnectRetryCount = 0
+        _isReconnecting.value = true
+        _connectionState.value = ConnectionState.Disconnected
+        _errorMessage.value = null
+        connect(ip, code, serial)
     }
 
     private fun stopForegroundService() {
@@ -488,10 +574,17 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
     fun disconnect() {
         userDisconnected = true
         _demoMode.value = false
-        cleanupConnections()
+        reconnectJob?.cancel()
+        reconnectJob = null
+        _isReconnecting.value = false
+        reconnectRetryCount = 0
+        fullCleanup()
         stopForegroundService()
         _errorMessage.value = null
         _connectionState.value = ConnectionState.Disconnected
+        // Clear last-connected so we don't auto-reconnect next launch
+        prefs.edit().remove("last_connected_serial").remove("last_connected_ip").apply()
+        _hasLastConnectedPrinter.value = false
     }
 
     private val _demoMode = MutableStateFlow(false)

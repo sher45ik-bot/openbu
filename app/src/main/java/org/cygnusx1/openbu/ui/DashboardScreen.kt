@@ -32,9 +32,11 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Print
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
@@ -100,10 +102,13 @@ fun DashboardScreen(
     showMainStream: Boolean,
     internalRtspPlayer: ExoPlayer?,
     rtspPlayer: ExoPlayer?,
+    isReconnecting: Boolean = false,
     onToggleLight: (Boolean) -> Unit,
     onOpenFullscreen: () -> Unit,
     onOpenInternalRtspFullscreen: () -> Unit,
     onOpenRtspFullscreen: () -> Unit,
+    onDisconnect: () -> Unit,
+    onReconnect: () -> Unit,
     onOpenSettings: () -> Unit,
     onOpenPrinterSettings: () -> Unit,
     onOpenFileManager: () -> Unit,
@@ -166,6 +171,27 @@ fun DashboardScreen(
                 }
                 HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
                 NavigationDrawerItem(
+                    label = { Text("Back to Connections") },
+                    selected = false,
+                    onClick = {
+                        scope.launch { drawerState.close() }
+                        onDisconnect()
+                    },
+                    icon = { Icon(Icons.Filled.ArrowBack, contentDescription = null) },
+                    modifier = Modifier.padding(horizontal = 12.dp),
+                )
+                NavigationDrawerItem(
+                    label = { Text("Reconnect") },
+                    selected = false,
+                    onClick = {
+                        scope.launch { drawerState.close() }
+                        onReconnect()
+                    },
+                    icon = { Icon(Icons.Filled.Refresh, contentDescription = null) },
+                    modifier = Modifier.padding(horizontal = 12.dp),
+                )
+                HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
+                NavigationDrawerItem(
                     label = { Text("Printer Settings") },
                     selected = false,
                     onClick = {
@@ -215,8 +241,7 @@ fun DashboardScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
-            .padding(16.dp)
-            .verticalScroll(rememberScrollState()),
+            .padding(horizontal = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Spacer(modifier = Modifier.height(48.dp))
@@ -236,11 +261,20 @@ fun DashboardScreen(
                 modifier = Modifier.align(Alignment.Center),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Text(
-                    text = "Openbu",
-                    style = MaterialTheme.typography.headlineMedium,
-                    color = MaterialTheme.colorScheme.onBackground,
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "Openbu",
+                        style = MaterialTheme.typography.headlineMedium,
+                        color = MaterialTheme.colorScheme.onBackground,
+                    )
+                    if (isReconnecting) {
+                        Spacer(modifier = Modifier.width(8.dp))
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            strokeWidth = 2.dp,
+                        )
+                    }
+                }
                 if (printerName.isNotBlank()) {
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
@@ -264,6 +298,13 @@ fun DashboardScreen(
 
         Spacer(modifier = Modifier.height(24.dp))
 
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState()),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
         // Mini video preview
         if (showMainStream && internalRtspPlayer == null) {
             Card(
@@ -429,6 +470,7 @@ fun DashboardScreen(
         Spacer(modifier = Modifier.height(8.dp))
 
         Spacer(modifier = Modifier.height(32.dp))
+        } // scrollable Column
     }
     } // ModalNavigationDrawer
 }

@@ -104,6 +104,9 @@ class MainActivity : ComponentActivity() {
                 val discoveredPrinters by viewModel.discoveredPrinters.collectAsState()
                 val savedPrinters by viewModel.savedPrinters.collectAsState()
                 val connectedSerialNumber by viewModel.connectedSerialNumber.collectAsState()
+                val isReconnecting by viewModel.isReconnecting.collectAsState()
+                val hasLastConnectedPrinter by viewModel.hasLastConnectedPrinter.collectAsState()
+                val rtspReconnectKey by viewModel.rtspReconnectKey.collectAsState()
 
                 var showFullscreen by rememberSaveable { mutableStateOf(false) }
                 var showRtspFullscreen by rememberSaveable { mutableStateOf(false) }
@@ -164,19 +167,19 @@ class MainActivity : ComponentActivity() {
 
                 // Internal RTSP player (non-P1 printer built-in camera)
                 @OptIn(UnstableApi::class)
-                val internalRtspPlayer = remember(internalRtspUrl) {
+                val internalRtspPlayer = remember(internalRtspUrl, rtspReconnectKey) {
                     if (internalRtspUrl.isNotBlank()) createRtspPlayer(internalRtspUrl, "RTSP-Internal") else null
                 }
-                DisposableEffect(internalRtspUrl) {
+                DisposableEffect(internalRtspUrl, rtspReconnectKey) {
                     onDispose { internalRtspPlayer?.release() }
                 }
 
                 // External RTSP player (user-configured secondary camera)
                 @OptIn(UnstableApi::class)
-                val rtspPlayer = remember(effectiveRtspUrl) {
+                val rtspPlayer = remember(effectiveRtspUrl, rtspReconnectKey) {
                     if (effectiveRtspUrl.isNotBlank()) createRtspPlayer(effectiveRtspUrl, "RTSP-External") else null
                 }
-                DisposableEffect(effectiveRtspUrl) {
+                DisposableEffect(effectiveRtspUrl, rtspReconnectKey) {
                     onDispose { rtspPlayer?.release() }
                 }
 
@@ -352,8 +355,10 @@ class MainActivity : ComponentActivity() {
                         }
                         RtspStreamScreen(player = rtspPlayer)
                     }
-                    connectionState == ConnectionState.Connected -> {
-                        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                    connectionState == ConnectionState.Connected || hasLastConnectedPrinter -> {
+                        if (connectionState == ConnectionState.Connected) {
+                            window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                        }
                         requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
                         BackHandler {
                             showFullscreen = false
@@ -387,6 +392,14 @@ class MainActivity : ComponentActivity() {
                             showMainStream = showMainStream,
                             internalRtspPlayer = internalRtspPlayer,
                             rtspPlayer = rtspPlayer,
+                            isReconnecting = isReconnecting,
+                            onDisconnect = {
+                                viewModel.closeFileManager()
+                                viewModel.closeTimelapse()
+                                viewModel.disconnect()
+                                window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                            },
+                            onReconnect = { viewModel.reconnect() },
                             onToggleLight = { viewModel.toggleLight(it) },
                             onOpenFullscreen = { showFullscreen = true },
                             onOpenInternalRtspFullscreen = { showInternalRtspFullscreen = true },
