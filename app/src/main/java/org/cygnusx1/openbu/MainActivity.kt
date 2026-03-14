@@ -11,6 +11,7 @@ import androidx.activity.enableEdgeToEdge
 import android.util.Log
 import androidx.annotation.OptIn
 import androidx.compose.runtime.DisposableEffect
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -80,6 +81,12 @@ class MainActivity : ComponentActivity() {
         setContent {
             val viewModel: BambuStreamViewModel = viewModel()
             viewModelRef = viewModel
+
+            LifecycleResumeEffect(Unit) {
+                Log.d("AutoReconnect", "Activity resumed, calling retryIfNeeded")
+                viewModel.retryIfNeeded()
+                onPauseOrDispose {}
+            }
             val forceDarkMode by viewModel.forceDarkMode.collectAsState()
             val customBgColor by viewModel.customBgColor.collectAsState()
             val connectionState by viewModel.connectionState.collectAsState()
@@ -105,6 +112,7 @@ class MainActivity : ComponentActivity() {
                 val savedPrinters by viewModel.savedPrinters.collectAsState()
                 val connectedSerialNumber by viewModel.connectedSerialNumber.collectAsState()
                 val isReconnecting by viewModel.isReconnecting.collectAsState()
+                val mjpegCameraFailed by viewModel.mjpegCameraFailed.collectAsState()
                 val hasLastConnectedPrinter by viewModel.hasLastConnectedPrinter.collectAsState()
                 val rtspReconnectKey by viewModel.rtspReconnectKey.collectAsState()
 
@@ -393,6 +401,7 @@ class MainActivity : ComponentActivity() {
                             internalRtspPlayer = internalRtspPlayer,
                             rtspPlayer = rtspPlayer,
                             isReconnecting = isReconnecting,
+                            mjpegCameraFailed = mjpegCameraFailed,
                             onDisconnect = {
                                 viewModel.closeFileManager()
                                 viewModel.closeTimelapse()

@@ -90,6 +90,9 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
     private val _customPrinterName = MutableStateFlow("")
     val customPrinterName: StateFlow<String> = _customPrinterName.asStateFlow()
 
+    private val _mjpegCameraFailed = MutableStateFlow(false)
+    val mjpegCameraFailed: StateFlow<Boolean> = _mjpegCameraFailed.asStateFlow()
+
     private val _customBgColor = MutableStateFlow<Int?>(null)
     val customBgColor: StateFlow<Int?> = _customBgColor.asStateFlow()
 
@@ -182,6 +185,8 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
     private var reconnectJob: Job? = null
     private var reconnectRetryCount = 0
     private val maxReconnectRetries = 5
+    private var mjpegRetryCount = 0
+    private var mjpegRetryJob: Job? = null
 
     private val _isReconnecting = MutableStateFlow(false)
     val isReconnecting: StateFlow<Boolean> = _isReconnecting.asStateFlow()
@@ -196,13 +201,26 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
         val masterKey = MasterKey.Builder(application)
             .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
             .build()
-        EncryptedSharedPreferences.create(
-            application,
-            "bambu_prefs",
-            masterKey,
-            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM,
-        )
+        try {
+            EncryptedSharedPreferences.create(
+                application,
+                "bambu_prefs",
+                masterKey,
+                EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+                EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM,
+            )
+        } catch (e: Exception) {
+            // Encrypted prefs corrupted after force-close — delete and recreate
+            Log.w("BambuVM", "EncryptedSharedPreferences corrupted, resetting", e)
+            application.deleteSharedPreferences("bambu_prefs")
+            EncryptedSharedPreferences.create(
+                application,
+                "bambu_prefs",
+                masterKey,
+                EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+                EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM,
+            )
+        }
     }
 
     fun getSavedAccessCode(serialNumber: String): String =
@@ -226,7 +244,9 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
         val lastSerial = prefs.getString("last_connected_serial", "") ?: ""
         val lastIp = prefs.getString("last_connected_ip", "") ?: ""
         val lastAccessCode = if (lastSerial.isNotBlank()) getSavedAccessCode(lastSerial) else ""
+        Log.d("AutoReconnect", "init: serial=${lastSerial.isNotBlank()}, ip=${lastIp.isNotBlank()}, code=${lastAccessCode.isNotBlank()}")
         if (lastSerial.isNotBlank() && lastIp.isNotBlank() && lastAccessCode.isNotBlank()) {
+            Log.d("AutoReconnect", "init: auto-reconnecting to $lastIp ($lastSerial)")
             _hasLastConnectedPrinter.value = true
             _isReconnecting.value = true
             _connectedSerialNumber.value = lastSerial
@@ -326,9 +346,13 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
         printerSeriesFromSerial(serial).usesMjpegCamera
 
     fun connect(ip: String, accessCode: String, serialNumber: String) {
+        Log.d("AutoReconnect", "connect() called: ip=$ip, serial=$serialNumber, state=${_connectionState.value}, userDisconnected=$userDisconnected")
         if (_connectionState.value == ConnectionState.Connecting ||
             _connectionState.value == ConnectionState.Connected
-        ) return
+        ) {
+            Log.d("AutoReconnect", "connect() skipped: already ${_connectionState.value}")
+            return
+        }
 
         // Clean up any stale stream/MQTT from a previous connection
         streamJob?.cancel()
@@ -379,6 +403,7 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
                         if (_connectionState.value != ConnectionState.Connected) {
                             _connectionState.value = ConnectionState.Connected
                             _isReconnecting.value = false
+                            _mjpegCameraFailed.value = false
                             reconnectRetryCount = 0
                             if (_keepConnectionInBackground.value) {
                                 val app = getApplication<Application>()
@@ -400,12 +425,14 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
                 } catch (e: CancellationException) {
                     throw e
                 } catch (e: Exception) {
+                    Log.d("AutoReconnect", "MJPEG stream error: ${e.message}, userDisconnected=$userDisconnected, mqttConnected=${_isMqttConnected.value}")
                     if (!userDisconnected) {
-                        if (ftpClient != null) {
-                            // FTP is active — don't tear everything down, just note the stream died
-                            _connectionState.value = ConnectionState.Error
-                            _frame.value = null
-                            _fps.value = 0f
+                        _mjpegCameraFailed.value = true
+                        _frame.value = null
+                        _fps.value = 0f
+                        if (_isMqttConnected.value || ftpClient != null) {
+                            // MQTT or FTP still active — only retry the camera stream
+                            scheduleMjpegRetry()
                         } else {
                             _errorMessage.value = "Connection to printer failed"
                             _connectionState.value = ConnectionState.Error
@@ -431,10 +458,8 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
             launch {
                 mqtt.connected.collect {
                     _isMqttConnected.value = it
-                    // For RTSPS printers, mark connected once MQTT is up
-                    if (it && !usesMjpegCamera(serialNumber) &&
-                        _connectionState.value == ConnectionState.Connecting
-                    ) {
+                    // Mark connected once MQTT is up (for all printer types)
+                    if (it && _connectionState.value == ConnectionState.Connecting) {
                         _connectionState.value = ConnectionState.Connected
                         _isReconnecting.value = false
                         reconnectRetryCount = 0
@@ -448,6 +473,7 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
             launch {
                 mqtt.connectionError.collect { error ->
                     if (error != null && !userDisconnected) {
+                        Log.d("AutoReconnect", "MQTT error: $error")
                         _errorMessage.value = error
                         _connectionState.value = ConnectionState.Error
                         cleanupConnections()
@@ -494,6 +520,8 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
     private fun cleanupConnections() {
         streamJob?.cancel()
         streamJob = null
+        mjpegRetryJob?.cancel()
+        mjpegRetryJob = null
         mqttJob?.cancel()
         mqttJob = null
         val cam = client
@@ -514,6 +542,9 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
 
     private fun fullCleanup() {
         cleanupConnections()
+        mjpegRetryJob?.cancel()
+        mjpegRetryJob = null
+        mjpegRetryCount = 0
         _connectedSerialNumber.value = ""
         _connectedIp.value = ""
         _connectedAccessCode.value = ""
@@ -522,19 +553,81 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
         _showMainStream.value = prefs.getBoolean("show_main_stream", true)
         _customBgColor.value = null
         _customPrinterName.value = ""
+        _mjpegCameraFailed.value = false
+    }
+
+    private fun scheduleMjpegRetry() {
+        if (userDisconnected) return
+        val ip = _connectedIp.value
+        val code = _connectedAccessCode.value
+        if (ip.isBlank() || code.isBlank()) return
+        if (mjpegRetryCount >= maxReconnectRetries) {
+            // Stop retrying camera but keep MQTT/dashboard alive
+            _isReconnecting.value = false
+            return
+        }
+        mjpegRetryCount++
+        _isReconnecting.value = true
+        mjpegRetryJob?.cancel()
+        mjpegRetryJob = viewModelScope.launch {
+            delay(3000)
+            if (userDisconnected) return@launch
+            val bambuClient = BambuCameraClient(ip, code)
+            bambuClient.extendedDebugLogging = _extendedDebugLogging.value
+            client = bambuClient
+            try {
+                var frameCount = 0
+                var lastFpsTime = System.currentTimeMillis()
+                bambuClient.frameFlow().collect { bitmap ->
+                    if (_mjpegCameraFailed.value) {
+                        _mjpegCameraFailed.value = false
+                        _isReconnecting.value = false
+                        mjpegRetryCount = 0
+                        if (_connectionState.value != ConnectionState.Connected) {
+                            _connectionState.value = ConnectionState.Connected
+                            reconnectRetryCount = 0
+                            if (_keepConnectionInBackground.value) {
+                                val app = getApplication<Application>()
+                                app.startForegroundService(Intent(app, ConnectionForegroundService::class.java))
+                            }
+                        }
+                    }
+                    _frame.value = bitmap
+                    frameCount++
+                    val now = System.currentTimeMillis()
+                    val elapsed = now - lastFpsTime
+                    if (elapsed >= 1000) {
+                        _fps.value = frameCount * 1000f / elapsed
+                        frameCount = 0
+                        lastFpsTime = now
+                    }
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                if (!userDisconnected) {
+                    _frame.value = null
+                    _fps.value = 0f
+                    scheduleMjpegRetry()
+                }
+            }
+        }
     }
 
     private fun scheduleReconnect() {
+        Log.d("AutoReconnect", "scheduleReconnect: userDisconnected=$userDisconnected, retryCount=$reconnectRetryCount/$maxReconnectRetries")
         if (userDisconnected) return
         val ip = _connectedIp.value
         val code = _connectedAccessCode.value
         val serial = _connectedSerialNumber.value
-        if (ip.isBlank() || code.isBlank() || serial.isBlank()) return
+        if (ip.isBlank() || code.isBlank() || serial.isBlank()) {
+            Log.d("AutoReconnect", "scheduleReconnect: skipped, missing credentials")
+            return
+        }
         if (reconnectRetryCount >= maxReconnectRetries) {
+            Log.d("AutoReconnect", "scheduleReconnect: max retries exhausted")
             _isReconnecting.value = false
-            _hasLastConnectedPrinter.value = false
-            prefs.edit().remove("last_connected_serial").remove("last_connected_ip").apply()
-            fullCleanup()
+            cleanupConnections()
             _errorMessage.value = "Failed to reconnect after $maxReconnectRetries attempts"
             _connectionState.value = ConnectionState.Error
             return
@@ -560,10 +653,32 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
         cleanupConnections()
         _rtspReconnectKey.value++
         reconnectRetryCount = 0
+        mjpegRetryCount = 0
+        _mjpegCameraFailed.value = false
         _isReconnecting.value = true
         _connectionState.value = ConnectionState.Disconnected
         _errorMessage.value = null
         connect(ip, code, serial)
+    }
+
+    fun retryIfNeeded() {
+        Log.d("AutoReconnect", "retryIfNeeded: state=${_connectionState.value}, hasLastConnected=${_hasLastConnectedPrinter.value}, userDisconnected=$userDisconnected")
+        if (_connectionState.value == ConnectionState.Error ||
+            (_connectionState.value == ConnectionState.Disconnected && _hasLastConnectedPrinter.value)
+        ) {
+            val ip = _connectedIp.value.ifBlank { prefs.getString("last_connected_ip", "") ?: "" }
+            val serial = _connectedSerialNumber.value.ifBlank { prefs.getString("last_connected_serial", "") ?: "" }
+            val code = _connectedAccessCode.value.ifBlank { if (serial.isNotBlank()) getSavedAccessCode(serial) else "" }
+            Log.d("AutoReconnect", "retryIfNeeded: ip=${ip.isNotBlank()}, serial=${serial.isNotBlank()}, code=${code.isNotBlank()}")
+            if (ip.isNotBlank() && serial.isNotBlank() && code.isNotBlank()) {
+                _hasLastConnectedPrinter.value = true
+                reconnectRetryCount = 0
+                _errorMessage.value = null
+                _connectionState.value = ConnectionState.Disconnected
+                _isReconnecting.value = true
+                connect(ip, code, serial)
+            }
+        }
     }
 
     private fun stopForegroundService() {
@@ -572,6 +687,7 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
     }
 
     fun disconnect() {
+        Log.d("AutoReconnect", "disconnect() called")
         userDisconnected = true
         _demoMode.value = false
         reconnectJob?.cancel()
@@ -1114,6 +1230,8 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
         ssdpClient.stopDiscovery()
         closeFileManager()
         closeTimelapse()
-        disconnect()
+        // Clean up connections but preserve last_connected prefs for auto-reconnect on next launch
+        cleanupConnections()
+        stopForegroundService()
     }
 }
