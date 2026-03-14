@@ -141,6 +141,9 @@ class BambuMqttClient(
                     Log.w(TAG, "MQTT connection lost", e)
                 } else {
                     Log.e(TAG, "MQTT connection failed", e)
+                    if (e.isNoRouteToHost()) {
+                        _connectionError.value = "EHOSTUNREACH"
+                    }
                 }
             } finally {
                 _connected.value = false
@@ -669,6 +672,10 @@ class BambuMqttClient(
         val value = raw.toIntOrNull() ?: return 0
         return (floor(value / 1.5f) * 25.5f).roundToInt()
     }
+
+    private fun Exception.isNoRouteToHost(): Boolean =
+        generateSequence<Throwable>(this) { it.cause }
+            .any { it.message?.contains("EHOSTUNREACH") == true }
 
     companion object {
         private const val TAG = "BambuMqtt"

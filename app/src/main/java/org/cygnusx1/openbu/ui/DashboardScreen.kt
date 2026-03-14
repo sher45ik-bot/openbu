@@ -104,6 +104,7 @@ fun DashboardScreen(
     rtspPlayer: ExoPlayer?,
     isReconnecting: Boolean = false,
     mjpegCameraFailed: Boolean = false,
+    noRouteToHost: String? = null,
     onToggleLight: (Boolean) -> Unit,
     onOpenFullscreen: () -> Unit,
     onOpenInternalRtspFullscreen: () -> Unit,
@@ -284,10 +285,18 @@ fun DashboardScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
+                if (noRouteToHost != null) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = noRouteToHost,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
                 if (mjpegCameraFailed) {
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "Warning: Printer may have a two internal camera client limit",
+                        text = "Warning: Printer's internal camera may have a two connection limit",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.error,
                     )

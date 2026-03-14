@@ -93,6 +93,9 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
     private val _mjpegCameraFailed = MutableStateFlow(false)
     val mjpegCameraFailed: StateFlow<Boolean> = _mjpegCameraFailed.asStateFlow()
 
+    private val _noRouteToHost = MutableStateFlow<String?>(null)
+    val noRouteToHost: StateFlow<String?> = _noRouteToHost.asStateFlow()
+
     private val _customBgColor = MutableStateFlow<Int?>(null)
     val customBgColor: StateFlow<Int?> = _customBgColor.asStateFlow()
 
@@ -404,6 +407,7 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
                             _connectionState.value = ConnectionState.Connected
                             _isReconnecting.value = false
                             _mjpegCameraFailed.value = false
+                            _noRouteToHost.value = null
                             reconnectRetryCount = 0
                             if (_keepConnectionInBackground.value) {
                                 val app = getApplication<Application>()
@@ -427,7 +431,12 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
                 } catch (e: Exception) {
                     Log.d("AutoReconnect", "MJPEG stream error: ${e.message}, userDisconnected=$userDisconnected, mqttConnected=${_isMqttConnected.value}")
                     if (!userDisconnected) {
-                        _mjpegCameraFailed.value = true
+                        if (e.isNoRouteToHost()) {
+                            setNoRouteToHost(ip)
+                        }
+                        if (mjpegRetryCount > 0) {
+                            _mjpegCameraFailed.value = true
+                        }
                         _frame.value = null
                         _fps.value = 0f
                         if (_isMqttConnected.value || ftpClient != null) {
@@ -462,6 +471,7 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
                     if (it && _connectionState.value == ConnectionState.Connecting) {
                         _connectionState.value = ConnectionState.Connected
                         _isReconnecting.value = false
+                        _noRouteToHost.value = null
                         reconnectRetryCount = 0
                         if (_keepConnectionInBackground.value) {
                             val app = getApplication<Application>()
@@ -474,6 +484,9 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
                 mqtt.connectionError.collect { error ->
                     if (error != null && !userDisconnected) {
                         Log.d("AutoReconnect", "MQTT error: $error")
+                        if (error == "EHOSTUNREACH") {
+                            setNoRouteToHost(ip)
+                        }
                         _errorMessage.value = error
                         _connectionState.value = ConnectionState.Error
                         cleanupConnections()
@@ -554,6 +567,7 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
         _customBgColor.value = null
         _customPrinterName.value = ""
         _mjpegCameraFailed.value = false
+        _noRouteToHost.value = null
     }
 
     private fun scheduleMjpegRetry() {
@@ -581,6 +595,7 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
                 bambuClient.frameFlow().collect { bitmap ->
                     if (_mjpegCameraFailed.value) {
                         _mjpegCameraFailed.value = false
+                        _noRouteToHost.value = null
                         _isReconnecting.value = false
                         mjpegRetryCount = 0
                         if (_connectionState.value != ConnectionState.Connected) {
@@ -655,6 +670,7 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
         reconnectRetryCount = 0
         mjpegRetryCount = 0
         _mjpegCameraFailed.value = false
+        _noRouteToHost.value = null
         _isReconnecting.value = true
         _connectionState.value = ConnectionState.Disconnected
         _errorMessage.value = null
@@ -1234,4 +1250,12 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
         cleanupConnections()
         stopForegroundService()
     }
+
+    private fun setNoRouteToHost(ip: String) {
+        _noRouteToHost.value = "No route to host, $ip.\nPrinter off or disconnected from WiFi?"
+    }
+
+    private fun Exception.isNoRouteToHost(): Boolean =
+        generateSequence<Throwable>(this) { it.cause }
+            .any { it.message?.contains("EHOSTUNREACH") == true }
 }

@@ -113,6 +113,7 @@ class MainActivity : ComponentActivity() {
                 val connectedSerialNumber by viewModel.connectedSerialNumber.collectAsState()
                 val isReconnecting by viewModel.isReconnecting.collectAsState()
                 val mjpegCameraFailed by viewModel.mjpegCameraFailed.collectAsState()
+                val noRouteToHost by viewModel.noRouteToHost.collectAsState()
                 val hasLastConnectedPrinter by viewModel.hasLastConnectedPrinter.collectAsState()
                 val rtspReconnectKey by viewModel.rtspReconnectKey.collectAsState()
 
@@ -402,6 +403,7 @@ class MainActivity : ComponentActivity() {
                             rtspPlayer = rtspPlayer,
                             isReconnecting = isReconnecting,
                             mjpegCameraFailed = mjpegCameraFailed,
+                            noRouteToHost = noRouteToHost,
                             onDisconnect = {
                                 viewModel.closeFileManager()
                                 viewModel.closeTimelapse()
