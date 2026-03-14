@@ -23,7 +23,7 @@ android {
         minSdk = 26
         targetSdk = 35
         versionCode = 1
-        versionName = "1.0.13"
+        versionName = "1.0.14"
     }
 
     signingConfigs {
@@ -63,7 +63,7 @@ android {
     }
 
     applicationVariants.all {
-        val appName = "continuum"
+        val appName = "openbu"
         val buildTypeName = buildType.name
         val vName = versionName
 
