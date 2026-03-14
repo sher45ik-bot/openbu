@@ -281,7 +281,7 @@ class MainActivity : ComponentActivity() {
                             },
                         )
                     }
-                    connectionState == ConnectionState.Connected && showSettings -> {
+                    showSettings -> {
                         requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
                         BackHandler { showSettings = false }
                         val mqttDataMessages by viewModel.mqttDataMessages.collectAsState()
