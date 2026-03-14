@@ -62,6 +62,25 @@ android {
         compose = true
     }
 
+    applicationVariants.all {
+        val appName = "continuum"
+        val buildTypeName = buildType.name
+        val vName = versionName
+
+        outputs.all {
+            val output = this as com.android.build.gradle.internal.api.BaseVariantOutputImpl
+            val abiFilter = output.filters.find { it.filterType == "ABI" }?.identifier ?: "universal"
+
+            val artifactName = if (buildTypeName == "debug") {
+                "${appName}-${buildTypeName}-${abiFilter}-${vName}"
+            } else {
+                "${appName}-${abiFilter}-${vName}"
+            }
+
+            output.outputFileName = "${artifactName}.apk"
+        }
+    }
+
     if (!keystorePropertiesFile.exists()) {
         logger.warn("Warning: keystore.properties file not found. Skipping signing configuration for withGPlay.")
     }
