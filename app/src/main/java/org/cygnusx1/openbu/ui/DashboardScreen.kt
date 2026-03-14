@@ -863,7 +863,7 @@ private fun FilamentEditDialog(
                     val r = currentColor.substring(0, 2).toInt(16)
                     val g = currentColor.substring(2, 4).toInt(16)
                     val b = currentColor.substring(4, 6).toInt(16)
-                    Color(r, g, b).toArgb()
+                    Color(android.graphics.Color.argb(255, r, g, b)).toArgb()
                 } catch (_: Exception) { Color.Gray.toArgb() }
             } else Color.Gray.toArgb()
         )
@@ -1106,7 +1106,7 @@ private fun parseHexColor(hex: String): Color {
         val g = hex.substring(2, 4).toInt(16)
         val b = hex.substring(4, 6).toInt(16)
         val a = if (hex.length >= 8) hex.substring(6, 8).toInt(16) else 255
-        Color(r, g, b, a)
+        Color(android.graphics.Color.argb(a, r, g, b))
     } catch (_: Exception) {
         Color.Gray
     }
