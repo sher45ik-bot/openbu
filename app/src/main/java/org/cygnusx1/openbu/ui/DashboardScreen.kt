@@ -1,6 +1,9 @@
 package org.cygnusx1.openbu.ui
 
 import android.graphics.Bitmap
+import java.util.Calendar
+import java.text.SimpleDateFormat
+import java.util.Locale
 import org.cygnusx1.openbu.data.PrinterSeries
 import org.cygnusx1.openbu.data.printerSeriesFromSerial
 import androidx.compose.foundation.Image
@@ -520,9 +523,15 @@ private fun PrintStatusCard(
         else -> ""
     }
 
+    val etaText = if (remainingMin > 0) {
+        val cal = Calendar.getInstance().apply { add(Calendar.MINUTE, remainingMin) }
+        val fmt = SimpleDateFormat("h:mma", Locale.getDefault())
+        "(ETA ${fmt.format(cal.time).lowercase()})"
+    } else ""
+
     val timeText = when {
-        remainingMin > 0 && totalMin > 0 -> "${formatTime(remainingMin)} / ${formatTime(totalMin)}"
-        remainingMin > 0 -> formatTime(remainingMin)
+        remainingMin > 0 && totalMin > 0 -> "${formatTime(remainingMin)} / ${formatTime(totalMin)} $etaText"
+        remainingMin > 0 -> "${formatTime(remainingMin)} $etaText"
         else -> ""
     }
 
