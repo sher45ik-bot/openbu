@@ -576,7 +576,7 @@ private fun PrintStatusCard(
             }
 
             // Progress bar with percentage and layer info
-            if (printerStatus.gcodeState == "RUNNING" || printerStatus.gcodeState == "PAUSE") {
+            if (printerStatus.gcodeState == "RUNNING" || printerStatus.gcodeState == "PAUSE" || printerStatus.gcodeState == "FINISH") {
                 Spacer(modifier = Modifier.height(10.dp))
                 val progressFraction = (percent / 100f).coerceIn(0f, 1f)
                 Box(
@@ -617,49 +617,51 @@ private fun PrintStatusCard(
                 }
 
                 // Pause / Resume / Stop buttons
-                Spacer(modifier = Modifier.height(10.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    if (printerStatus.gcodeState == "RUNNING") {
-                        FilledTonalButton(
-                            onClick = { onPrinterActionCommand("pause") },
-                            modifier = Modifier.weight(1f),
-                        ) {
-                            Icon(
-                                imageVector = Icons.Filled.Pause,
-                                contentDescription = "Pause",
-                                modifier = Modifier.size(18.dp),
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("Pause")
-                        }
-                    } else {
-                        FilledTonalButton(
-                            onClick = { onPrinterActionCommand("resume") },
-                            modifier = Modifier.weight(1f),
-                        ) {
-                            Icon(
-                                imageVector = Icons.Filled.PlayArrow,
-                                contentDescription = "Resume",
-                                modifier = Modifier.size(18.dp),
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("Resume")
-                        }
-                    }
-                    FilledTonalButton(
-                        onClick = { onPrinterActionCommand("stop") },
-                        modifier = Modifier.weight(1f),
+                if (printerStatus.gcodeState != "FINISH") {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        Icon(
-                            imageVector = Icons.Filled.Stop,
-                            contentDescription = "Stop",
-                            modifier = Modifier.size(18.dp),
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Stop")
+                        if (printerStatus.gcodeState == "RUNNING") {
+                            FilledTonalButton(
+                                onClick = { onPrinterActionCommand("pause") },
+                                modifier = Modifier.weight(1f),
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.Pause,
+                                    contentDescription = "Pause",
+                                    modifier = Modifier.size(18.dp),
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Pause")
+                            }
+                        } else {
+                            FilledTonalButton(
+                                onClick = { onPrinterActionCommand("resume") },
+                                modifier = Modifier.weight(1f),
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.PlayArrow,
+                                    contentDescription = "Resume",
+                                    modifier = Modifier.size(18.dp),
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Resume")
+                            }
+                        }
+                        FilledTonalButton(
+                            onClick = { onPrinterActionCommand("stop") },
+                            modifier = Modifier.weight(1f),
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Stop,
+                                contentDescription = "Stop",
+                                modifier = Modifier.size(18.dp),
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Stop")
+                        }
                     }
                 }
             }
