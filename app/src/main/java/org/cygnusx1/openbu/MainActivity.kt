@@ -103,6 +103,7 @@ class MainActivity : ComponentActivity() {
                 val printerStatus by viewModel.printerStatus.collectAsState()
                 val keepConnectionInBackground by viewModel.keepConnectionInBackground.collectAsState()
                 val showMainStream by viewModel.showMainStream.collectAsState()
+                val autoSavePrinter by viewModel.autoSavePrinter.collectAsState()
                 val internalRtspUrl by viewModel.internalRtspUrl.collectAsState()
                 val rtspEnabled by viewModel.rtspEnabled.collectAsState()
                 val rtspUrl by viewModel.rtspUrl.collectAsState()
@@ -301,6 +302,8 @@ class MainActivity : ComponentActivity() {
                             onKeepConnectionChanged = { viewModel.setKeepConnectionInBackground(it) },
                             showMainStream = showMainStream,
                             onShowMainStreamChanged = { viewModel.setShowMainStream(it) },
+                            autoSavePrinter = autoSavePrinter,
+                            onAutoSavePrinterChanged = { viewModel.setAutoSavePrinter(it) },
                             forceDarkMode = forceDarkMode,
                             onForceDarkModeChanged = { viewModel.setForceDarkMode(it) },
                             debugLogging = debugLogging,
@@ -329,7 +332,6 @@ class MainActivity : ComponentActivity() {
                             customBgColor = customBgColor,
                             onBgColorChanged = { viewModel.setCustomBgColor(it) },
                             isSaved = savedPrinters.any { it.serialNumber == connectedSerialNumber },
-                            onSavePrinter = { viewModel.saveCurrentPrinter() },
                             onDeletePrinter = { viewModel.deleteSavedPrinter(connectedSerialNumber) },
                             onBack = { showPrinterSettings = false },
                         )
@@ -451,11 +453,12 @@ class MainActivity : ComponentActivity() {
                             errorMessage = errorMessage,
                             discoveredPrinters = discoveredPrinters,
                             savedPrinters = savedPrinters,
+                            savePrinterDefault = autoSavePrinter,
                             onStartDiscovery = { viewModel.startDiscovery() },
                             onStopDiscovery = { viewModel.stopDiscovery() },
                             onGetSavedAccessCode = { serial -> viewModel.getSavedAccessCode(serial) },
-                            onConnect = { ip, accessCode, serialNumber ->
-                                viewModel.connect(ip, accessCode, serialNumber)
+                            onConnect = { ip, accessCode, serialNumber, savePrinter ->
+                                viewModel.connect(ip, accessCode, serialNumber, savePrinter)
                             },
                         )
                     }

@@ -43,6 +43,8 @@ fun SettingsScreen(
     onKeepConnectionChanged: (Boolean) -> Unit,
     showMainStream: Boolean,
     onShowMainStreamChanged: (Boolean) -> Unit,
+    autoSavePrinter: Boolean,
+    onAutoSavePrinterChanged: (Boolean) -> Unit,
     forceDarkMode: Boolean,
     onForceDarkModeChanged: (Boolean) -> Unit,
     debugLogging: Boolean,
@@ -153,6 +155,32 @@ fun SettingsScreen(
                 Switch(
                     checked = showMainStream,
                     onCheckedChange = onShowMainStreamChanged,
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Auto-save printers
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Auto-save printers",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onBackground,
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = "Default to saving printers on connect",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Switch(
+                    checked = autoSavePrinter,
+                    onCheckedChange = onAutoSavePrinterChanged,
                 )
             }
 

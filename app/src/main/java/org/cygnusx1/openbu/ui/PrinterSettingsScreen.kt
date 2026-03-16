@@ -78,7 +78,6 @@ fun PrinterSettingsScreen(
     customBgColor: Int?,
     onBgColorChanged: (Int?) -> Unit,
     isSaved: Boolean,
-    onSavePrinter: () -> Unit,
     onDeletePrinter: () -> Unit,
     onBack: () -> Unit,
 ) {
@@ -136,33 +135,31 @@ fun PrinterSettingsScreen(
         )
 
         Column(modifier = Modifier.padding(16.dp)) {
-            // Save printer
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "Save printer",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onBackground,
-                    )
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = "Remember this printer for quick connect",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+            if (isSaved) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Saved printer",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onBackground,
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = "This printer is saved for quick connect",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    TextButton(onClick = { showDeleteConfirmation = true }) {
+                        Text("Remove")
+                    }
                 }
-                Switch(
-                    checked = isSaved,
-                    onCheckedChange = { checked ->
-                        if (checked) onSavePrinter() else showDeleteConfirmation = true
-                    },
-                )
-            }
 
-            Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(16.dp))
+            }
 
             // Custom printer name
             OutlinedTextField(

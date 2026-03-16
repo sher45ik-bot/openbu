@@ -65,15 +65,17 @@ fun ConnectionScreen(
     errorMessage: String?,
     discoveredPrinters: List<DiscoveredPrinter>,
     savedPrinters: List<SavedPrinter>,
+    savePrinterDefault: Boolean = true,
     onStartDiscovery: () -> Unit,
     onStopDiscovery: () -> Unit,
     onGetSavedAccessCode: (serialNumber: String) -> String,
-    onConnect: (ip: String, accessCode: String, serialNumber: String) -> Unit,
+    onConnect: (ip: String, accessCode: String, serialNumber: String, savePrinter: Boolean) -> Unit,
 ) {
     var ip by rememberSaveable { mutableStateOf("") }
     var accessCode by rememberSaveable { mutableStateOf("") }
     var accessCodeVisible by rememberSaveable { mutableStateOf(false) }
     var serialNumber by rememberSaveable { mutableStateOf("") }
+    var savePrinter by rememberSaveable { mutableStateOf(savePrinterDefault) }
     var manualMode by rememberSaveable { mutableStateOf(false) }
     var selectedSerial by rememberSaveable { mutableStateOf<String?>(null) }
     val isConnecting = connectionState == ConnectionState.Connecting
@@ -214,7 +216,7 @@ fun ConnectionScreen(
                 keyboardActions = KeyboardActions(
                     onDone = {
                         if (canConnect) {
-                            onConnect(ip, accessCode, serialNumber)
+                            onConnect(ip, accessCode, serialNumber, savePrinter)
                         }
                     },
                 ),
@@ -341,9 +343,9 @@ fun ConnectionScreen(
                         onDone = {
                             if (canConnect) {
                                 if (selectedSavedPrinter != null) {
-                                    onConnect(selectedSavedPrinter.ip, accessCode, selectedSavedPrinter.serialNumber)
+                                    onConnect(selectedSavedPrinter.ip, accessCode, selectedSavedPrinter.serialNumber, savePrinter)
                                 } else if (selectedPrinter != null) {
-                                    onConnect(selectedPrinter.ip, accessCode, selectedPrinter.serialNumber)
+                                    onConnect(selectedPrinter.ip, accessCode, selectedPrinter.serialNumber, savePrinter)
                                 }
                             }
                         },
@@ -354,6 +356,32 @@ fun ConnectionScreen(
             }
         }
 
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Save printer",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onBackground,
+                )
+                Text(
+                    text = "Remember this printer for quick connect",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Switch(
+                checked = savePrinter,
+                onCheckedChange = { savePrinter = it },
+                enabled = !isConnecting,
+            )
+        }
+
         Spacer(modifier = Modifier.height(24.dp))
 
         if (isConnecting) {
@@ -362,11 +390,11 @@ fun ConnectionScreen(
             Button(
                 onClick = {
                     if (manualMode) {
-                        onConnect(ip, accessCode, serialNumber)
+                        onConnect(ip, accessCode, serialNumber, savePrinter)
                     } else if (selectedSavedPrinter != null) {
-                        onConnect(selectedSavedPrinter.ip, accessCode, selectedSavedPrinter.serialNumber)
+                        onConnect(selectedSavedPrinter.ip, accessCode, selectedSavedPrinter.serialNumber, savePrinter)
                     } else if (selectedPrinter != null) {
-                        onConnect(selectedPrinter.ip, accessCode, selectedPrinter.serialNumber)
+                        onConnect(selectedPrinter.ip, accessCode, selectedPrinter.serialNumber, savePrinter)
                     }
                 },
                 enabled = canConnect,

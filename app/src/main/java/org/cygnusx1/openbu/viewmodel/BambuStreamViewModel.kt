@@ -96,6 +96,9 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
     private val _noRouteToHost = MutableStateFlow<String?>(null)
     val noRouteToHost: StateFlow<String?> = _noRouteToHost.asStateFlow()
 
+    private val _autoSavePrinter = MutableStateFlow(true)
+    val autoSavePrinter: StateFlow<Boolean> = _autoSavePrinter.asStateFlow()
+
     private val _customBgColor = MutableStateFlow<Int?>(null)
     val customBgColor: StateFlow<Int?> = _customBgColor.asStateFlow()
 
@@ -184,6 +187,7 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
     private var timelapseDownloadClient: BambuFtpsClient? = null
     private var timelapseThumbnailJob: Job? = null
     @Volatile private var timelapseDownloadCancelled = false
+    private var pendingSavePrinter = false
     private var userDisconnected = false
     private var reconnectJob: Job? = null
     private var reconnectRetryCount = 0
@@ -235,6 +239,7 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
         _forceDarkMode.value = prefs.getBoolean("force_dark_mode", false)
         _debugLogging.value = prefs.getBoolean("debug_logging", false)
         _extendedDebugLogging.value = prefs.getBoolean("extended_debug_logging", false)
+        _autoSavePrinter.value = prefs.getBoolean("auto_save_printer", true)
 
         // Migrate stale global RTSP keys
         if (prefs.contains("rtsp_enabled") || prefs.contains("rtsp_url")) {
@@ -339,6 +344,11 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
         client?.extendedDebugLogging = enabled
     }
 
+    fun setAutoSavePrinter(enabled: Boolean) {
+        _autoSavePrinter.value = enabled
+        prefs.edit().putBoolean("auto_save_printer", enabled).apply()
+    }
+
     private fun saveCredentials(ip: String, accessCode: String, serialNumber: String) {
         prefs.edit()
             .putString("access_code_$serialNumber", accessCode)
@@ -348,7 +358,7 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
     private fun usesMjpegCamera(serial: String): Boolean =
         printerSeriesFromSerial(serial).usesMjpegCamera
 
-    fun connect(ip: String, accessCode: String, serialNumber: String) {
+    fun connect(ip: String, accessCode: String, serialNumber: String, savePrinter: Boolean = false) {
         Log.d("AutoReconnect", "connect() called: ip=$ip, serial=$serialNumber, state=${_connectionState.value}, userDisconnected=$userDisconnected")
         if (_connectionState.value == ConnectionState.Connecting ||
             _connectionState.value == ConnectionState.Connected
@@ -373,10 +383,13 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
             }
         }
 
+        pendingSavePrinter = savePrinter
         userDisconnected = false
         reconnectJob?.cancel()
         reconnectJob = null
-        saveCredentials(ip, accessCode, serialNumber)
+        if (pendingSavePrinter) {
+            saveCredentials(ip, accessCode, serialNumber)
+        }
         _connectedIp.value = ip
         _connectedAccessCode.value = accessCode
         _connectedSerialNumber.value = serialNumber
@@ -412,6 +425,10 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
                             if (_keepConnectionInBackground.value) {
                                 val app = getApplication<Application>()
                                 app.startForegroundService(Intent(app, ConnectionForegroundService::class.java))
+                            }
+                            if (pendingSavePrinter) {
+                                pendingSavePrinter = false
+                                saveCurrentPrinter()
                             }
                         }
                         _frame.value = bitmap
@@ -476,6 +493,10 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
                         if (_keepConnectionInBackground.value) {
                             val app = getApplication<Application>()
                             app.startForegroundService(Intent(app, ConnectionForegroundService::class.java))
+                        }
+                        if (pendingSavePrinter) {
+                            pendingSavePrinter = false
+                            saveCurrentPrinter()
                         }
                     }
                 }
@@ -625,6 +646,10 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
                                 val app = getApplication<Application>()
                                 app.startForegroundService(Intent(app, ConnectionForegroundService::class.java))
                             }
+                            if (pendingSavePrinter) {
+                                pendingSavePrinter = false
+                                saveCurrentPrinter()
+                            }
                         }
                     }
                     _frame.value = bitmap
@@ -725,6 +750,7 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
     fun disconnect() {
         Log.d("AutoReconnect", "disconnect() called")
         userDisconnected = true
+        pendingSavePrinter = false
         _demoMode.value = false
         reconnectJob?.cancel()
         reconnectJob = null
