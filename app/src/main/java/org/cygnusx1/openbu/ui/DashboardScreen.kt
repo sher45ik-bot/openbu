@@ -93,6 +93,8 @@ import org.cygnusx1.openbu.network.AmsTray
 import org.cygnusx1.openbu.network.AmsUnit
 import org.cygnusx1.openbu.network.PrinterStatus
 
+private val CardPadding = 8.dp
+
 @Composable
 fun DashboardScreen(
     frame: Bitmap?,
@@ -542,7 +544,7 @@ private fun PrintStatusCard(
         shape = RoundedCornerShape(12.dp),
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+            modifier = Modifier.padding(CardPadding),
         ) {
             // State + remaining time
             Row(
@@ -683,7 +685,7 @@ private fun IconStatusCard(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 10.dp),
+                .padding(CardPadding),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
