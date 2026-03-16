@@ -1,6 +1,7 @@
 package org.cygnusx1.openbu.ui
 
 import android.graphics.Bitmap
+import android.util.Log
 import java.util.Calendar
 import java.text.SimpleDateFormat
 import java.util.Locale
@@ -136,6 +137,7 @@ fun DashboardScreen(
     onSetSpeedLevel: (Int) -> Unit,
     onSetNozzleTemperature: (Int) -> Unit,
     onSetBedTemperature: (Int) -> Unit,
+    onSetFanSpeed: (Int, Int) -> Unit,
     onPrinterActionCommand: (String) -> Unit,
     filaments: List<FilamentProfile> = emptyList(),
     onSetFilament: (Int, Int, FilamentProfile, String) -> Unit = { _, _, _, _ -> },
@@ -145,6 +147,9 @@ fun DashboardScreen(
     var showSpeedDialog by remember { mutableStateOf(false) }
     var showNozzleDialog by remember { mutableStateOf(false) }
     var showBedDialog by remember { mutableStateOf(false) }
+    var showPartFanDialog by remember { mutableStateOf(false) }
+    var showAuxFanDialog by remember { mutableStateOf(false) }
+    var showChamberFanDialog by remember { mutableStateOf(false) }
     var filamentEditTarget by remember { mutableStateOf<FilamentEditTarget?>(null) }
 
     filamentEditTarget?.let { target ->
@@ -188,6 +193,54 @@ fun DashboardScreen(
             onConfirm = { temp ->
                 onSetBedTemperature(temp)
                 showBedDialog = false
+            },
+        )
+    }
+
+    if (showPartFanDialog) {
+        Log.d("FanControl", "Part fan dialog opened: currentPwm=${printerStatus.coolingFanSpeed} (${kotlin.math.round(printerStatus.coolingFanSpeed * 100f / 255f).toInt()}%)")
+        FanSpeedDialog(
+            title = "Part Fan Speed",
+            presetKey = "part_fan_presets",
+            currentSpeedPwm = printerStatus.coolingFanSpeed,
+            onDismiss = { showPartFanDialog = false },
+            onConfirm = { percent ->
+                val pwm = kotlin.math.round(percent * 255f / 100f).toInt()
+                Log.d("FanControl", "Part fan confirm: percent=$percent -> pwm=$pwm (fan=1)")
+                onSetFanSpeed(1, pwm)
+                showPartFanDialog = false
+            },
+        )
+    }
+
+    if (showAuxFanDialog) {
+        Log.d("FanControl", "Aux fan dialog opened: currentPwm=${printerStatus.bigFan1Speed} (${kotlin.math.round(printerStatus.bigFan1Speed * 100f / 255f).toInt()}%)")
+        FanSpeedDialog(
+            title = "Aux Fan Speed",
+            presetKey = "aux_fan_presets",
+            currentSpeedPwm = printerStatus.bigFan1Speed,
+            onDismiss = { showAuxFanDialog = false },
+            onConfirm = { percent ->
+                val pwm = kotlin.math.round(percent * 255f / 100f).toInt()
+                Log.d("FanControl", "Aux fan confirm: percent=$percent -> pwm=$pwm (fan=2)")
+                onSetFanSpeed(2, pwm)
+                showAuxFanDialog = false
+            },
+        )
+    }
+
+    if (showChamberFanDialog) {
+        Log.d("FanControl", "Chamber fan dialog opened: currentPwm=${printerStatus.bigFan2Speed} (${kotlin.math.round(printerStatus.bigFan2Speed * 100f / 255f).toInt()}%)")
+        FanSpeedDialog(
+            title = "Chamber Fan Speed",
+            presetKey = "chamber_fan_presets",
+            currentSpeedPwm = printerStatus.bigFan2Speed,
+            onDismiss = { showChamberFanDialog = false },
+            onConfirm = { percent ->
+                val pwm = kotlin.math.round(percent * 255f / 100f).toInt()
+                Log.d("FanControl", "Chamber fan confirm: percent=$percent -> pwm=$pwm (fan=3)")
+                onSetFanSpeed(3, pwm)
+                showChamberFanDialog = false
             },
         )
     }
@@ -488,6 +541,7 @@ fun DashboardScreen(
                 iconRes = R.drawable.ic_part_fan,
                 value = "${fanSpeedPercent(printerStatus.coolingFanSpeed)}%",
                 modifier = Modifier.weight(1f),
+                onClick = { showPartFanDialog = true },
             )
             if (isEnclosed) {
                 IconStatusCard(
@@ -495,12 +549,14 @@ fun DashboardScreen(
                     iconRes = R.drawable.ic_aux_fan,
                     value = "${fanSpeedPercent(printerStatus.bigFan1Speed)}%",
                     modifier = Modifier.weight(1f),
+                    onClick = { showAuxFanDialog = true },
                 )
                 IconStatusCard(
                     title = "Chamber fan",
                     iconRes = R.drawable.ic_chamber_fan,
                     value = "${fanSpeedPercent(printerStatus.bigFan2Speed)}%",
                     modifier = Modifier.weight(1f),
+                    onClick = { showChamberFanDialog = true },
                 )
             }
         }
@@ -1187,7 +1243,7 @@ private fun TemperatureDialog(
                     Text(
                         text = "$targetTemp °C",
                         style = MaterialTheme.typography.headlineMedium,
-                        modifier = Modifier.padding(horizontal = 16.dp),
+                        modifier = Modifier.padding(horizontal = 96.dp),
                     )
                     RepeatingIconButton(onClick = { targetTemp = (targetTemp + 1).coerceAtMost(maxTemp) }) {
                         Text("+", style = MaterialTheme.typography.headlineMedium)
@@ -1241,6 +1297,112 @@ private fun TemperatureDialog(
         },
         confirmButton = {
             TextButton(onClick = { onConfirm(targetTemp) }) {
+                Text("Set")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        },
+    )
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun FanSpeedDialog(
+    title: String,
+    presetKey: String,
+    currentSpeedPwm: Int,
+    onDismiss: () -> Unit,
+    onConfirm: (Int) -> Unit,
+) {
+    val context = LocalContext.current
+    val prefs = remember { context.getSharedPreferences("temp_presets", android.content.Context.MODE_PRIVATE) }
+    val initialPercent = kotlin.math.round(currentSpeedPwm * 100f / 255f).toInt()
+    var targetSpeed by remember { mutableIntStateOf(initialPercent) }
+
+    fun loadPresets(): List<Int> {
+        val csv = prefs.getString(presetKey, "") ?: ""
+        return csv.split(",").mapNotNull { it.trim().toIntOrNull() }
+    }
+
+    val presets = remember { loadPresets().toMutableStateList() }
+
+    fun savePresets() {
+        prefs.edit().putString(presetKey, presets.joinToString(",")).apply()
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    RepeatingIconButton(onClick = { targetSpeed = (targetSpeed - 10).coerceAtLeast(0) }) {
+                        Text("−", style = MaterialTheme.typography.headlineMedium)
+                    }
+                    Text(
+                        text = "$targetSpeed%",
+                        style = MaterialTheme.typography.headlineMedium,
+                        modifier = Modifier.padding(horizontal = 96.dp),
+                    )
+                    RepeatingIconButton(onClick = { targetSpeed = (targetSpeed + 10).coerceAtMost(100) }) {
+                        Text("+", style = MaterialTheme.typography.headlineMedium)
+                    }
+                }
+                if (presets.isNotEmpty() || presets.size < 5) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        presets.forEach { preset ->
+                            FilterChip(
+                                selected = targetSpeed == preset,
+                                onClick = { targetSpeed = preset },
+                                label = { Text("$preset%") },
+                                trailingIcon = {
+                                    Icon(
+                                        Icons.Filled.Close,
+                                        contentDescription = "Remove preset",
+                                        modifier = Modifier
+                                            .size(16.dp)
+                                            .clickable {
+                                                presets.remove(preset)
+                                                savePresets()
+                                            },
+                                    )
+                                },
+                            )
+                        }
+                        if (presets.size < 5 && targetSpeed !in presets) {
+                            AssistChip(
+                                onClick = {
+                                    presets.add(targetSpeed)
+                                    presets.sort()
+                                    savePresets()
+                                },
+                                label = { Text("Save $targetSpeed%") },
+                                leadingIcon = {
+                                    Icon(
+                                        Icons.Filled.Add,
+                                        contentDescription = "Save preset",
+                                        modifier = Modifier.size(16.dp),
+                                    )
+                                },
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onConfirm(targetSpeed) }) {
                 Text("Set")
             }
         },

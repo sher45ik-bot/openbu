@@ -428,6 +428,7 @@ class MainActivity : ComponentActivity() {
                             onSetSpeedLevel = { viewModel.setSpeedLevel(it) },
                             onSetNozzleTemperature = { viewModel.setNozzleTemperature(it) },
                             onSetBedTemperature = { viewModel.setBedTemperature(it) },
+                            onSetFanSpeed = { fan, pwm -> viewModel.setFanSpeed(fan, pwm) },
                             onPrinterActionCommand = { viewModel.sendPrinterActionCommand(it) },
                             filaments = filamentCatalog,
                             onSetFilament = { amsId, trayId, profile, colorHex ->

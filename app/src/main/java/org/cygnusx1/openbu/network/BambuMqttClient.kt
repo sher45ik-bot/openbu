@@ -334,6 +334,37 @@ class BambuMqttClient(
         }
     }
 
+    fun setFanSpeed(fan: Int, speedPwm: Int) {
+        // G-code: M106 P{fan} S{speedPwm}
+        // fan: 1=part cooling, 2=aux/big, 3=chamber
+        // speedPwm: 0-255
+        val fanName = when (fan) { 1 -> "part"; 2 -> "aux"; 3 -> "chamber"; else -> "unknown($fan)" }
+        val out = socketOutput ?: run {
+            Log.w(TAG, "setFanSpeed: socketOutput is null, cannot send M106 P$fan S$speedPwm ($fanName)")
+            return
+        }
+        val gcode = "M106 P$fan S$speedPwm\n"
+        val json = JSONObject().apply {
+            put("print", JSONObject().apply {
+                put("sequence_id", "0")
+                put("command", "gcode_line")
+                put("param", gcode)
+            })
+        }
+        try {
+            val topic = "device/$serialNumber/request"
+            if (debugLogging) Log.d(TAG, "setFanSpeed: $fanName fan=$fan pwm=$speedPwm gcode=\"${gcode.trim()}\" topic=$topic payload=${json}")
+            val packet = buildPublishPacket(topic, json.toString())
+            synchronized(out) {
+                out.write(packet)
+                out.flush()
+            }
+            if (debugLogging) Log.d(TAG, "setFanSpeed: published ${packet.size} bytes for $fanName fan")
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to publish fan speed for $fanName fan (P$fan S$speedPwm)", e)
+        }
+    }
+
     fun setSpeedLevel(level: Int) {
         val out = socketOutput ?: return
         val json = JSONObject().apply {

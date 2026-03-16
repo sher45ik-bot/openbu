@@ -524,6 +524,14 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
         }
     }
 
+    fun setFanSpeed(fan: Int, speedPwm: Int) {
+        val fanName = when (fan) { 1 -> "part"; 2 -> "aux"; 3 -> "chamber"; else -> "unknown($fan)" }
+        Log.d("BambuVM", "setFanSpeed: $fanName fan=$fan pwm=$speedPwm (${kotlin.math.round(speedPwm * 100f / 255f).toInt()}%) mqttClient=${if (mqttClient != null) "connected" else "null"}")
+        viewModelScope.launch(Dispatchers.IO) {
+            mqttClient?.setFanSpeed(fan, speedPwm)
+        }
+    }
+
     fun setSpeedLevel(level: Int) {
         viewModelScope.launch(Dispatchers.IO) {
             mqttClient?.setSpeedLevel(level)
