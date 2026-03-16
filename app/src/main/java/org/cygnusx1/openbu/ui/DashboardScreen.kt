@@ -162,7 +162,7 @@ fun DashboardScreen(
         drawerState = drawerState,
         drawerContent = {
             ModalDrawerSheet(modifier = Modifier.width(280.dp)) {
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(CardPadding))
                 Text(
                     text = "Openbu",
                     style = MaterialTheme.typography.headlineSmall,
@@ -368,19 +368,19 @@ fun DashboardScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(CardPadding))
         }
 
         // Internal RTSP stream (non-P1 printer built-in camera)
         if (showMainStream && internalRtspPlayer != null) {
             RtspStreamCard(player = internalRtspPlayer, onClick = onOpenInternalRtspFullscreen)
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(CardPadding))
         }
 
         // External RTSP stream
         if (rtspPlayer != null) {
             RtspStreamCard(player = rtspPlayer, onClick = onOpenRtspFullscreen)
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(CardPadding))
         }
 
         // Chamber light control
@@ -391,7 +391,7 @@ fun DashboardScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                    .padding(CardPadding),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -412,7 +412,7 @@ fun DashboardScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(CardPadding))
 
         // Status
         PrintStatusCard(
@@ -420,9 +420,9 @@ fun DashboardScreen(
             onPrinterActionCommand = onPrinterActionCommand,
         )
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(CardPadding))
 
-        // Nozzle & Bed temps side by side
+        // Nozzle, Bed & Fan speeds
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             IconStatusCard(
                 title = "Nozzle",
@@ -436,12 +436,6 @@ fun DashboardScreen(
                 value = "%.1f / %.1f \u00B0C".format(printerStatus.bedTemper, printerStatus.bedTargetTemper),
                 modifier = Modifier.weight(1f),
             )
-        }
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        // Fan speeds
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             IconStatusCard(
                 title = "Part fan",
                 iconRes = R.drawable.ic_part_fan,
@@ -464,7 +458,7 @@ fun DashboardScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(CardPadding))
 
         // AMS cards
         for (amsUnit in printerStatus.amsUnits) {
@@ -477,7 +471,7 @@ fun DashboardScreen(
                     trayInfoIdx = tray.trayInfoIdx,
                 )
             }
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(CardPadding))
         }
 
         // External spool
@@ -490,7 +484,7 @@ fun DashboardScreen(
                 trayInfoIdx = printerStatus.vtTray?.trayInfoIdx ?: "",
             )
         }
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(CardPadding))
 
         Spacer(modifier = Modifier.height(32.dp))
         } // scrollable Column
