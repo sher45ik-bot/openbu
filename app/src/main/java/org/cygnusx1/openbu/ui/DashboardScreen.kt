@@ -121,6 +121,7 @@ fun DashboardScreen(
     onOpenFileManager: () -> Unit,
     onOpenTimelapse: () -> Unit,
     onSetSpeedLevel: (Int) -> Unit,
+    onSetNozzleTemperature: (Int) -> Unit,
     onPrinterActionCommand: (String) -> Unit,
     filaments: List<FilamentProfile> = emptyList(),
     onSetFilament: (Int, Int, FilamentProfile, String) -> Unit = { _, _, _, _ -> },
@@ -128,6 +129,7 @@ fun DashboardScreen(
     val series = printerSeriesFromSerial(serialNumber)
     val isEnclosed = series.isEnclosed
     var showSpeedDialog by remember { mutableStateOf(false) }
+    var showNozzleDialog by remember { mutableStateOf(false) }
     var filamentEditTarget by remember { mutableStateOf<FilamentEditTarget?>(null) }
 
     filamentEditTarget?.let { target ->
@@ -146,6 +148,17 @@ fun DashboardScreen(
 
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
+
+    if (showNozzleDialog) {
+        NozzleTemperatureDialog(
+            currentTemp = printerStatus.nozzleTargetTemper.toInt(),
+            onDismiss = { showNozzleDialog = false },
+            onConfirm = { temp ->
+                onSetNozzleTemperature(temp)
+                showNozzleDialog = false
+            },
+        )
+    }
 
     if (showSpeedDialog) {
         SpeedLevelDialog(
@@ -429,6 +442,7 @@ fun DashboardScreen(
                 iconRes = R.drawable.ic_nozzle,
                 value = "%.1f / %.1f \u00B0C".format(printerStatus.nozzleTemper, printerStatus.nozzleTargetTemper),
                 modifier = Modifier.weight(1f),
+                onClick = { showNozzleDialog = true },
             )
             IconStatusCard(
                 title = "Bed",
@@ -671,9 +685,12 @@ private fun IconStatusCard(
     iconRes: Int,
     value: String,
     modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null,
 ) {
     Card(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
         shape = RoundedCornerShape(12.dp),
     ) {
         Column(
@@ -1054,6 +1071,49 @@ private fun fanSpeedPercent(value: Int): Int {
     // Fan speeds are 0-255 PWM values, convert to 0-100% matching BambuStudio's display
     // BambuStudio rounds to nearest 10%: round(value / 25.5) * 10
     return (kotlin.math.round(value / 25.5f) * 10).toInt()
+}
+
+@Composable
+private fun NozzleTemperatureDialog(
+    currentTemp: Int,
+    onDismiss: () -> Unit,
+    onConfirm: (Int) -> Unit,
+) {
+    var targetTemp by remember { mutableIntStateOf(currentTemp) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Nozzle Temperature") },
+        text = {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                IconButton(onClick = { targetTemp = (targetTemp - 1).coerceAtLeast(0) }) {
+                    Text("−", style = MaterialTheme.typography.headlineMedium)
+                }
+                Text(
+                    text = "$targetTemp °C",
+                    style = MaterialTheme.typography.headlineMedium,
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                )
+                IconButton(onClick = { targetTemp = (targetTemp + 1).coerceAtMost(300) }) {
+                    Text("+", style = MaterialTheme.typography.headlineMedium)
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onConfirm(targetTemp) }) {
+                Text("Set")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        },
+    )
 }
 
 @Composable

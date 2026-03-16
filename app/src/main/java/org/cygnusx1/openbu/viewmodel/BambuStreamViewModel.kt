@@ -512,6 +512,12 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
         }
     }
 
+    fun setNozzleTemperature(temp: Int) {
+        viewModelScope.launch(Dispatchers.IO) {
+            mqttClient?.setNozzleTemperature(temp)
+        }
+    }
+
     fun setSpeedLevel(level: Int) {
         viewModelScope.launch(Dispatchers.IO) {
             mqttClient?.setSpeedLevel(level)

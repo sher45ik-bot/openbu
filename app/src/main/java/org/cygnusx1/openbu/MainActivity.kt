@@ -426,6 +426,7 @@ class MainActivity : ComponentActivity() {
                                 showTimelapse = true
                             },
                             onSetSpeedLevel = { viewModel.setSpeedLevel(it) },
+                            onSetNozzleTemperature = { viewModel.setNozzleTemperature(it) },
                             onPrinterActionCommand = { viewModel.sendPrinterActionCommand(it) },
                             filaments = filamentCatalog,
                             onSetFilament = { amsId, trayId, profile, colorHex ->
