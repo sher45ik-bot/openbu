@@ -35,10 +35,13 @@ I am strongly considering adding this to the [Google Play Store](https://play.go
 
 ## Features
 * Auto-detects printers, and auto fills in the ip address and serial number. Hence only requires the access code.
-* Allows the user to add an external [RTSP](https://en.wikipedia.org/wiki/Real-Time_Streaming_Protocol) stream to the dashboard by entering a [RTSP](https://en.wikipedia.org/wiki/Real-Time_Streaming_Protocol) URL
-* Supports the A1 and P1 series video stream based on JPEGs
-* Support [RTSP](https://en.wikipedia.org/wiki/Real-Time_Streaming_Protocol) streams from non-P1 series internal cameras
-* Supports toggling the chamber light
+* Saving the printer connection settings by default
+* Bed and nozzle temperature control
+* Fan speed control
+* Allows the user to add an external [RTSP](https://en.wikipedia.org/wiki/Real-Time_Streaming_Protocol) stream to the dashboard by entering a [RTSP](https://en.wikipedia.org/wiki/Real-Time_Streaming_Protocol) URL, and with pinch to zoom
+* Supports the A1 and P1 series video stream based on JPEGs with pinch to zoom.
+* Support [RTSP](https://en.wikipedia.org/wiki/Real-Time_Streaming_Protocol) streams from non-P1 series internal cameras with pinch to zoom
+* Supports toggling of the chamber light
 * [AMS HT](https://us.store.bambulab.com/products/ams-ht?from=home_web_top_navigation), [AMS](https://us.store.bambulab.com/products/ams-multicolor-printing?from=home_web_top_navigation), and [AMS 2 Pro](https://us.store.bambulab.com/products/ams-2-pro?from=home_web_top_navigation)
   - Knows the correct number of trays per model
   - Shows temperature, humidity, filament types, and filament colors
