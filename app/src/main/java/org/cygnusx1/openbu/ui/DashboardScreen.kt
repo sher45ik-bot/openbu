@@ -35,7 +35,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Print
@@ -55,6 +55,19 @@ import androidx.compose.material3.rememberDrawerState
 import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.launch
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.FilterChip
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.toMutableStateList
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.input.pointer.pointerInput
+import kotlinx.coroutines.delay
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
@@ -122,6 +135,7 @@ fun DashboardScreen(
     onOpenTimelapse: () -> Unit,
     onSetSpeedLevel: (Int) -> Unit,
     onSetNozzleTemperature: (Int) -> Unit,
+    onSetBedTemperature: (Int) -> Unit,
     onPrinterActionCommand: (String) -> Unit,
     filaments: List<FilamentProfile> = emptyList(),
     onSetFilament: (Int, Int, FilamentProfile, String) -> Unit = { _, _, _, _ -> },
@@ -130,6 +144,7 @@ fun DashboardScreen(
     val isEnclosed = series.isEnclosed
     var showSpeedDialog by remember { mutableStateOf(false) }
     var showNozzleDialog by remember { mutableStateOf(false) }
+    var showBedDialog by remember { mutableStateOf(false) }
     var filamentEditTarget by remember { mutableStateOf<FilamentEditTarget?>(null) }
 
     filamentEditTarget?.let { target ->
@@ -150,12 +165,29 @@ fun DashboardScreen(
     val scope = rememberCoroutineScope()
 
     if (showNozzleDialog) {
-        NozzleTemperatureDialog(
+        TemperatureDialog(
+            title = "Nozzle Temperature",
+            presetKey = "nozzle_presets",
             currentTemp = printerStatus.nozzleTargetTemper.toInt(),
+            maxTemp = series.maxNozzleTemp,
             onDismiss = { showNozzleDialog = false },
             onConfirm = { temp ->
                 onSetNozzleTemperature(temp)
                 showNozzleDialog = false
+            },
+        )
+    }
+
+    if (showBedDialog) {
+        TemperatureDialog(
+            title = "Bed Temperature",
+            presetKey = "bed_presets",
+            currentTemp = printerStatus.bedTargetTemper.toInt(),
+            maxTemp = series.maxBedTemp,
+            onDismiss = { showBedDialog = false },
+            onConfirm = { temp ->
+                onSetBedTemperature(temp)
+                showBedDialog = false
             },
         )
     }
@@ -197,7 +229,7 @@ fun DashboardScreen(
                         scope.launch { drawerState.close() }
                         onDisconnect()
                     },
-                    icon = { Icon(Icons.Filled.ArrowBack, contentDescription = null) },
+                    icon = { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null) },
                     modifier = Modifier.padding(horizontal = 12.dp),
                 )
                 NavigationDrawerItem(
@@ -221,7 +253,7 @@ fun DashboardScreen(
                     icon = { Icon(Icons.Filled.Print, contentDescription = null) },
                     modifier = Modifier.padding(horizontal = 12.dp),
                 )
-                if (series == PrinterSeries.P1 || series == PrinterSeries.A1) {
+                if (series.usesMjpegCamera) {
                     NavigationDrawerItem(
                         label = { Text("File Manager") },
                         selected = false,
@@ -449,6 +481,7 @@ fun DashboardScreen(
                 iconRes = R.drawable.ic_bed,
                 value = "%.1f / %.1f \u00B0C".format(printerStatus.bedTemper, printerStatus.bedTargetTemper),
                 modifier = Modifier.weight(1f),
+                onClick = { showBedDialog = true },
             )
             IconStatusCard(
                 title = "Part fan",
@@ -1074,32 +1107,135 @@ private fun fanSpeedPercent(value: Int): Int {
 }
 
 @Composable
-private fun NozzleTemperatureDialog(
+private fun RepeatingIconButton(
+    onClick: () -> Unit,
+    content: @Composable () -> Unit,
+) {
+    val currentOnClick by rememberUpdatedState(onClick)
+    var pressed by remember { mutableStateOf(false) }
+
+    LaunchedEffect(pressed) {
+        if (!pressed) return@LaunchedEffect
+        // Fire once immediately on press
+        currentOnClick()
+        // Start repeating after hold delay
+        delay(400)
+        var interval = 150L
+        while (pressed) {
+            currentOnClick()
+            delay(interval)
+            interval = (interval - 10).coerceAtLeast(30)
+        }
+    }
+
+    Box(
+        modifier = Modifier
+            .size(48.dp)
+            .pointerInput(Unit) {
+                awaitEachGesture {
+                    val down = awaitFirstDown(requireUnconsumed = false)
+                    down.consume()
+                    pressed = true
+                    waitForUpOrCancellation()
+                    pressed = false
+                }
+            },
+        contentAlignment = Alignment.Center,
+    ) {
+        content()
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun TemperatureDialog(
+    title: String,
+    presetKey: String,
     currentTemp: Int,
+    maxTemp: Int,
     onDismiss: () -> Unit,
     onConfirm: (Int) -> Unit,
 ) {
+    val context = LocalContext.current
+    val prefs = remember { context.getSharedPreferences("temp_presets", android.content.Context.MODE_PRIVATE) }
     var targetTemp by remember { mutableIntStateOf(currentTemp) }
+
+    fun loadPresets(): List<Int> {
+        val csv = prefs.getString(presetKey, "") ?: ""
+        return csv.split(",").mapNotNull { it.trim().toIntOrNull() }
+    }
+
+    val presets = remember { loadPresets().toMutableStateList() }
+
+    fun savePresets() {
+        prefs.edit().putString(presetKey, presets.joinToString(",")).apply()
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Nozzle Temperature") },
+        title = { Text(title) },
         text = {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                IconButton(onClick = { targetTemp = (targetTemp - 1).coerceAtLeast(0) }) {
-                    Text("−", style = MaterialTheme.typography.headlineMedium)
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    RepeatingIconButton(onClick = { targetTemp = (targetTemp - 1).coerceAtLeast(0) }) {
+                        Text("−", style = MaterialTheme.typography.headlineMedium)
+                    }
+                    Text(
+                        text = "$targetTemp °C",
+                        style = MaterialTheme.typography.headlineMedium,
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                    )
+                    RepeatingIconButton(onClick = { targetTemp = (targetTemp + 1).coerceAtMost(maxTemp) }) {
+                        Text("+", style = MaterialTheme.typography.headlineMedium)
+                    }
                 }
-                Text(
-                    text = "$targetTemp °C",
-                    style = MaterialTheme.typography.headlineMedium,
-                    modifier = Modifier.padding(horizontal = 16.dp),
-                )
-                IconButton(onClick = { targetTemp = (targetTemp + 1).coerceAtMost(300) }) {
-                    Text("+", style = MaterialTheme.typography.headlineMedium)
+                if (presets.isNotEmpty() || presets.size < 5) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        presets.forEach { preset ->
+                            FilterChip(
+                                selected = targetTemp == preset,
+                                onClick = { targetTemp = preset },
+                                label = { Text("$preset°C") },
+                                trailingIcon = {
+                                    Icon(
+                                        Icons.Filled.Close,
+                                        contentDescription = "Remove preset",
+                                        modifier = Modifier
+                                            .size(16.dp)
+                                            .clickable {
+                                                presets.remove(preset)
+                                                savePresets()
+                                            },
+                                    )
+                                },
+                            )
+                        }
+                        if (presets.size < 5 && targetTemp !in presets) {
+                            AssistChip(
+                                onClick = {
+                                    presets.add(targetTemp)
+                                    presets.sort()
+                                    savePresets()
+                                },
+                                label = { Text("Save $targetTemp°C") },
+                                leadingIcon = {
+                                    Icon(
+                                        Icons.Filled.Add,
+                                        contentDescription = "Save preset",
+                                        modifier = Modifier.size(16.dp),
+                                    )
+                                },
+                            )
+                        }
+                    }
                 }
             }
         },

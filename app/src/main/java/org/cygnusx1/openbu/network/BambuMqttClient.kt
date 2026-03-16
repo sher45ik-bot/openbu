@@ -312,6 +312,28 @@ class BambuMqttClient(
         }
     }
 
+    fun setBedTemperature(temp: Int) {
+        val out = socketOutput ?: return
+        val json = JSONObject().apply {
+            put("print", JSONObject().apply {
+                put("sequence_id", "0")
+                put("command", "gcode_line")
+                put("param", "M140 S$temp\n")
+            })
+        }
+        try {
+            val topic = "device/$serialNumber/request"
+            if (debugLogging) Log.d(TAG, "Publishing bed_temper=$temp to $topic")
+            val packet = buildPublishPacket(topic, json.toString())
+            synchronized(out) {
+                out.write(packet)
+                out.flush()
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to publish bed temperature", e)
+        }
+    }
+
     fun setSpeedLevel(level: Int) {
         val out = socketOutput ?: return
         val json = JSONObject().apply {
