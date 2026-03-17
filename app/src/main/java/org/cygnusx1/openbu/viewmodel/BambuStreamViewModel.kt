@@ -397,12 +397,11 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
         _connectionState.value = ConnectionState.Connecting
         _errorMessage.value = null
 
-        // Persist last-connected printer for auto-reconnect
+        // Persist last-connected printer for auto-reconnect (set flag after successful connection)
         prefs.edit()
             .putString("last_connected_serial", serialNumber)
             .putString("last_connected_ip", ip)
             .apply()
-        _hasLastConnectedPrinter.value = true
 
         if (usesMjpegCamera(serialNumber)) {
             _showMainStream.value = prefs.getBoolean("show_main_stream", true)
@@ -418,6 +417,7 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
                     bambuClient.frameFlow().collect { bitmap ->
                         if (_connectionState.value != ConnectionState.Connected) {
                             _connectionState.value = ConnectionState.Connected
+                            _hasLastConnectedPrinter.value = true
                             _isReconnecting.value = false
                             _mjpegCameraFailed.value = false
                             _noRouteToHost.value = null
@@ -487,6 +487,7 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
                     // Mark connected once MQTT is up (for all printer types)
                     if (it && _connectionState.value == ConnectionState.Connecting) {
                         _connectionState.value = ConnectionState.Connected
+                        _hasLastConnectedPrinter.value = true
                         _isReconnecting.value = false
                         _noRouteToHost.value = null
                         reconnectRetryCount = 0
@@ -510,8 +511,17 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
                         }
                         _errorMessage.value = error
                         _connectionState.value = ConnectionState.Error
+                        _hasLastConnectedPrinter.value = false
                         cleanupConnections()
-                        scheduleReconnect()
+                        if (error.contains("rejected", ignoreCase = true)) {
+                            // Auth failure — clear saved credentials so we don't auto-retry
+                            prefs.edit()
+                                .remove("last_connected_serial")
+                                .remove("last_connected_ip")
+                                .apply()
+                        } else {
+                            scheduleReconnect()
+                        }
                     }
                 }
             }
@@ -641,6 +651,7 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
                         mjpegRetryCount = 0
                         if (_connectionState.value != ConnectionState.Connected) {
                             _connectionState.value = ConnectionState.Connected
+                            _hasLastConnectedPrinter.value = true
                             reconnectRetryCount = 0
                             if (_keepConnectionInBackground.value) {
                                 val app = getApplication<Application>()

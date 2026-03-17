@@ -21,6 +21,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.MenuAnchorType
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
@@ -563,8 +564,11 @@ fun DashboardScreen(
 
         Spacer(modifier = Modifier.height(CardPadding))
 
-        // AMS cards
-        for (amsUnit in printerStatus.amsUnits) {
+        // AMS cards — full-width AMS, half-width AMS-HT + External Spool
+        val fullWidthAms = printerStatus.amsUnits.filter { it.model.isEmpty() || it.model.equals("AMS", ignoreCase = true) }
+        val halfWidthAms = printerStatus.amsUnits.filter { it.model.isNotEmpty() && !it.model.equals("AMS", ignoreCase = true) }
+
+        for (amsUnit in fullWidthAms) {
             AmsCard(amsUnit) { tray ->
                 filamentEditTarget = FilamentEditTarget(
                     amsId = amsUnit.id.toIntOrNull() ?: 0,
@@ -577,17 +581,66 @@ fun DashboardScreen(
             Spacer(modifier = Modifier.height(CardPadding))
         }
 
-        // External spool
-        ExternalSpoolCard(printerStatus.vtTray) {
-            filamentEditTarget = FilamentEditTarget(
-                amsId = 255,
-                trayId = 254,
-                type = printerStatus.vtTray?.trayType ?: "",
-                color = printerStatus.vtTray?.trayColor ?: "",
-                trayInfoIdx = printerStatus.vtTray?.trayInfoIdx ?: "",
-            )
+        // Half-width items: AMS-HT units + External Spool, paired into rows
+        var halfIndex = 0
+        while (halfIndex < halfWidthAms.size) {
+            Row(
+                modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Max),
+                horizontalArrangement = Arrangement.spacedBy(CardPadding),
+            ) {
+                val unit = halfWidthAms[halfIndex]
+                AmsCard(unit, modifier = Modifier.weight(1f).fillMaxHeight()) { tray ->
+                    filamentEditTarget = FilamentEditTarget(
+                        amsId = unit.id.toIntOrNull() ?: 0,
+                        trayId = tray.id.toIntOrNull() ?: 0,
+                        type = tray.trayType,
+                        color = tray.trayColor,
+                        trayInfoIdx = tray.trayInfoIdx,
+                    )
+                }
+                halfIndex++
+                if (halfIndex < halfWidthAms.size) {
+                    val unit2 = halfWidthAms[halfIndex]
+                    AmsCard(unit2, modifier = Modifier.weight(1f).fillMaxHeight()) { tray ->
+                        filamentEditTarget = FilamentEditTarget(
+                            amsId = unit2.id.toIntOrNull() ?: 0,
+                            trayId = tray.id.toIntOrNull() ?: 0,
+                            type = tray.trayType,
+                            color = tray.trayColor,
+                            trayInfoIdx = tray.trayInfoIdx,
+                        )
+                    }
+                    halfIndex++
+                } else {
+                    // Pair last AMS-HT with External Spool
+                    ExternalSpoolCard(printerStatus.vtTray, modifier = Modifier.weight(1f).fillMaxHeight()) {
+                        filamentEditTarget = FilamentEditTarget(
+                            amsId = 255,
+                            trayId = 254,
+                            type = printerStatus.vtTray?.trayType ?: "",
+                            color = printerStatus.vtTray?.trayColor ?: "",
+                            trayInfoIdx = printerStatus.vtTray?.trayInfoIdx ?: "",
+                        )
+                    }
+                    halfIndex++ // signal we used external spool
+                }
+            }
+            Spacer(modifier = Modifier.height(CardPadding))
         }
-        Spacer(modifier = Modifier.height(CardPadding))
+
+        // External spool — full-width if not already paired above
+        if (halfWidthAms.size % 2 == 0) {
+            ExternalSpoolCard(printerStatus.vtTray) {
+                filamentEditTarget = FilamentEditTarget(
+                    amsId = 255,
+                    trayId = 254,
+                    type = printerStatus.vtTray?.trayType ?: "",
+                    color = printerStatus.vtTray?.trayColor ?: "",
+                    trayInfoIdx = printerStatus.vtTray?.trayInfoIdx ?: "",
+                )
+            }
+            Spacer(modifier = Modifier.height(CardPadding))
+        }
 
         Spacer(modifier = Modifier.height(32.dp))
         } // scrollable Column
@@ -812,10 +865,10 @@ private fun IconStatusCard(
 }
 
 @Composable
-private fun AmsCard(amsUnit: AmsUnit, onTrayClick: (AmsTray) -> Unit) {
+private fun AmsCard(amsUnit: AmsUnit, modifier: Modifier = Modifier, onTrayClick: (AmsTray) -> Unit) {
     val amsLabel = amsUnit.model.ifEmpty { "AMS" }
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
     ) {
         Column(
@@ -881,9 +934,9 @@ private fun FilamentSlot(tray: AmsTray, onClick: () -> Unit = {}) {
 }
 
 @Composable
-private fun ExternalSpoolCard(vtTray: AmsTray?, onClick: () -> Unit) {
+private fun ExternalSpoolCard(vtTray: AmsTray?, modifier: Modifier = Modifier, onClick: () -> Unit) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
     ) {
         Column(
