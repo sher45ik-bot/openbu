@@ -97,8 +97,13 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
@@ -522,26 +527,26 @@ fun DashboardScreen(
         Spacer(modifier = Modifier.height(CardPadding))
 
         // Nozzle, Bed & Fan speeds
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Max), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             IconStatusCard(
                 title = "Nozzle",
                 iconRes = R.drawable.ic_nozzle,
                 value = "%.1f / %.1f \u00B0C".format(printerStatus.nozzleTemper, printerStatus.nozzleTargetTemper),
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f).fillMaxHeight(),
                 onClick = { showNozzleDialog = true },
             )
             IconStatusCard(
                 title = "Bed",
                 iconRes = R.drawable.ic_bed,
                 value = "%.1f / %.1f \u00B0C".format(printerStatus.bedTemper, printerStatus.bedTargetTemper),
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f).fillMaxHeight(),
                 onClick = { showBedDialog = true },
             )
             IconStatusCard(
                 title = "Part fan",
                 iconRes = R.drawable.ic_part_fan,
                 value = "${fanSpeedPercent(printerStatus.coolingFanSpeed)}%",
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f).fillMaxHeight(),
                 onClick = { showPartFanDialog = true },
             )
             if (isEnclosed) {
@@ -549,14 +554,14 @@ fun DashboardScreen(
                     title = "Aux fan",
                     iconRes = R.drawable.ic_aux_fan,
                     value = "${fanSpeedPercent(printerStatus.bigFan1Speed)}%",
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.weight(1f).fillMaxHeight(),
                     onClick = { showAuxFanDialog = true },
                 )
                 IconStatusCard(
                     title = "Chamber fan",
                     iconRes = R.drawable.ic_chamber_fan,
                     value = "${fanSpeedPercent(printerStatus.bigFan2Speed)}%",
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.weight(1f).fillMaxHeight(),
                     onClick = { showChamberFanDialog = true },
                 )
             }
@@ -719,12 +724,14 @@ private fun PrintStatusCard(
             // Filename
             if (fileName.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = fileName,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                )
+                LowDpiScaledContent {
+                    Text(
+                        text = fileName,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                    )
+                }
             }
 
             // Progress bar with percentage and layer info
@@ -899,36 +906,53 @@ private fun AmsCard(amsUnit: AmsUnit, modifier: Modifier = Modifier, onTrayClick
 }
 
 @Composable
+private fun LowDpiScaledContent(content: @Composable () -> Unit) {
+    val densityDpi = LocalConfiguration.current.densityDpi
+    if (densityDpi > 420) {
+        val current = LocalDensity.current
+        CompositionLocalProvider(
+            LocalDensity provides Density(current.density, current.fontScale * 0.8f)
+        ) { content() }
+    } else {
+        content()
+    }
+}
+
+@Composable
 private fun FilamentSlot(tray: AmsTray, onClick: () -> Unit = {}) {
     val isEmpty = tray.trayType.isEmpty()
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.clickable { onClick() },
-    ) {
-        if (isEmpty) {
-            Box(
-                modifier = Modifier.size(32.dp),
-                contentAlignment = Alignment.Center,
-            ) {
+    LowDpiScaledContent {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.clickable { onClick() },
+        ) {
+            if (isEmpty) {
+                Box(
+                    modifier = Modifier.size(32.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = "Empty",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Visible,
+                    )
+                }
+            } else {
+                Box(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .clip(CircleShape)
+                        .background(parseHexColor(tray.trayColor)),
+                )
+                Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "Empty",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    text = tray.trayType,
+                    style = MaterialTheme.typography.bodySmall,
+                    textAlign = TextAlign.Center,
                 )
             }
-        } else {
-            Box(
-                modifier = Modifier
-                    .size(32.dp)
-                    .clip(CircleShape)
-                    .background(parseHexColor(tray.trayColor)),
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = tray.trayType,
-                style = MaterialTheme.typography.bodySmall,
-                textAlign = TextAlign.Center,
-            )
         }
     }
 }
@@ -957,19 +981,23 @@ private fun ExternalSpoolCard(vtTray: AmsTray?, modifier: Modifier = Modifier, o
                 if (vtTray != null) {
                     FilamentSlot(vtTray, onClick = onClick)
                 } else {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier.clickable { onClick() },
-                    ) {
-                        Box(
-                            modifier = Modifier.size(32.dp),
-                            contentAlignment = Alignment.Center,
+                    LowDpiScaledContent {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.clickable { onClick() },
                         ) {
-                            Text(
-                                text = "Empty",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
+                            Box(
+                                modifier = Modifier.size(32.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Text(
+                                    text = "Empty",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Visible,
+                                )
+                            }
                         }
                     }
                 }
