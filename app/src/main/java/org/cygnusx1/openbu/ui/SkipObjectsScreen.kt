@@ -243,7 +243,7 @@ fun SkipObjectsScreen(
                                 )
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(
-                                        text = obj.name,
+                                        text = "${obj.identifyId}: ${obj.name}",
                                         style = MaterialTheme.typography.bodyMedium,
                                         textDecoration = if (isSkipped) TextDecoration.LineThrough else null,
                                         color = if (isSkipped) {
@@ -349,13 +349,11 @@ private fun PlateImageWithMarkers(
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(
-                        text = obj.name.take(10),
+                        text = obj.identifyId.toString(),
                         color = Color.White,
-                        fontSize = 7.sp,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
+                        fontSize = 9.sp,
+                        maxLines = 1,
                         textAlign = TextAlign.Center,
-                        lineHeight = 8.sp,
                     )
                 }
             }
