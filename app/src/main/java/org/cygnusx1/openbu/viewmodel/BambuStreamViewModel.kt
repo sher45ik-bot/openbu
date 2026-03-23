@@ -17,8 +17,10 @@ import org.cygnusx1.openbu.network.BambuMqttClient
 import org.cygnusx1.openbu.network.BambuSsdpClient
 import org.cygnusx1.openbu.network.DiscoveredPrinter
 import org.cygnusx1.openbu.network.FtpFileEntry
+import org.cygnusx1.openbu.network.PrintableObject
 import org.cygnusx1.openbu.network.PrinterStatus
 import org.cygnusx1.openbu.network.SavedPrinter
+import org.cygnusx1.openbu.network.ThreeMfParser
 import org.cygnusx1.openbu.service.ConnectionForegroundService
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -203,6 +205,18 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
 
     private val _rtspReconnectKey = MutableStateFlow(0)
     val rtspReconnectKey: StateFlow<Int> = _rtspReconnectKey.asStateFlow()
+
+    private val _skipObjectsList = MutableStateFlow<List<PrintableObject>>(emptyList())
+    val skipObjectsList: StateFlow<List<PrintableObject>> = _skipObjectsList.asStateFlow()
+
+    private val _skipObjectsLoading = MutableStateFlow(false)
+    val skipObjectsLoading: StateFlow<Boolean> = _skipObjectsLoading.asStateFlow()
+
+    private val _skipObjectsError = MutableStateFlow<String?>(null)
+    val skipObjectsError: StateFlow<String?> = _skipObjectsError.asStateFlow()
+
+    private val _skipObjectsPlateImage = MutableStateFlow<Bitmap?>(null)
+    val skipObjectsPlateImage: StateFlow<Bitmap?> = _skipObjectsPlateImage.asStateFlow()
 
     private val prefs by lazy {
         val masterKey = MasterKey.Builder(application)
@@ -579,6 +593,78 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
         viewModelScope.launch(Dispatchers.IO) {
             mqttClient?.sendPrinterActionCommand(command)
         }
+    }
+
+    fun loadSkipObjects() {
+        val status = _printerStatus.value
+        if (status.gcodeState != "RUNNING" || status.layerNum < 2) {
+            _skipObjectsError.value = "Printer must be actively printing (layer 2+) to skip objects"
+            return
+        }
+        val gcodeFile = status.gcodeFile
+        if (!gcodeFile.endsWith(".gcode.3mf")) {
+            _skipObjectsError.value = "Current print file is not a 3MF file"
+            return
+        }
+        val ip = _connectedIp.value
+        val code = _connectedAccessCode.value
+        if (ip.isBlank() || code.isBlank()) {
+            _skipObjectsError.value = "Not connected"
+            return
+        }
+
+        _skipObjectsLoading.value = true
+        _skipObjectsError.value = null
+
+        viewModelScope.launch(Dispatchers.IO) {
+            var ftpClient: BambuFtpsClient? = null
+            try {
+                ftpClient = BambuFtpsClient(ip, code)
+                ftpClient.connect()
+
+                val tempFile = File.createTempFile("skip_obj_", ".3mf", getApplication<Application>().cacheDir)
+                try {
+                Log.d("BambuVM", "Downloading 3MF: /$gcodeFile")
+                FileOutputStream(tempFile).use { out ->
+                    ftpClient.downloadFile("/$gcodeFile", out)
+                }
+                Log.d("BambuVM", "Downloaded 3MF: ${tempFile.length()} bytes")
+
+                val result = ThreeMfParser.extractObjects(tempFile)
+                Log.d("BambuVM", "Parsed ${result.objects.size} objects from 3MF: ${result.objects}")
+                if (result.objects.size <= 1) {
+                    _skipObjectsError.value = "Only one object on plate — nothing to skip"
+                    return@launch
+                }
+                _skipObjectsList.value = result.objects
+                _skipObjectsPlateImage.value = result.plateImage
+                } finally {
+                    tempFile.delete()
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.e("BambuVM", "Failed to load skip objects", e)
+                _skipObjectsError.value = "Failed to load objects: ${e.message}"
+            } finally {
+                try { ftpClient?.close() } catch (_: Exception) {}
+                _skipObjectsLoading.value = false
+            }
+        }
+    }
+
+    fun skipSelectedObjects(objectIds: List<Int>) {
+        val status = _printerStatus.value
+        if (status.gcodeState != "RUNNING" || status.layerNum < 2) return
+        val validIds = objectIds.filter { it !in status.skippedObjects }
+        if (validIds.isEmpty()) return
+        viewModelScope.launch(Dispatchers.IO) {
+            mqttClient?.skipObjects(validIds)
+        }
+    }
+
+    fun clearSkipObjectsError() {
+        _skipObjectsError.value = null
     }
 
     private fun cleanupConnections() {

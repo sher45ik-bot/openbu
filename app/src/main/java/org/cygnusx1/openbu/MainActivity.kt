@@ -38,6 +38,7 @@ import org.cygnusx1.openbu.ui.TimelapseScreen
 import org.cygnusx1.openbu.ui.PrinterSettingsScreen
 import org.cygnusx1.openbu.ui.RtspStreamScreen
 import org.cygnusx1.openbu.ui.SettingsScreen
+import org.cygnusx1.openbu.ui.SkipObjectsScreen
 import org.cygnusx1.openbu.ui.StreamScreen
 import org.cygnusx1.openbu.ui.VideoPlayerScreen
 import org.cygnusx1.openbu.ui.theme.OpenbuTheme
@@ -125,6 +126,7 @@ class MainActivity : ComponentActivity() {
                 var showPrinterSettings by rememberSaveable { mutableStateOf(false) }
                 var showFileManager by rememberSaveable { mutableStateOf(false) }
                 var showTimelapse by rememberSaveable { mutableStateOf(false) }
+                var showSkipObjects by rememberSaveable { mutableStateOf(false) }
                 val effectiveRtspUrl = if (rtspEnabled && rtspUrl.isNotBlank()) rtspUrl else ""
 
                 // Helper to build an ExoPlayer for an RTSP/RTSPS URL
@@ -211,7 +213,30 @@ class MainActivity : ComponentActivity() {
                 val timelapseDownloadName by viewModel.timelapseDownloadName.collectAsState()
                 val timelapsePlaybackFile by viewModel.timelapsePlaybackFile.collectAsState()
 
+                val skipObjectsList by viewModel.skipObjectsList.collectAsState()
+                val skipObjectsLoading by viewModel.skipObjectsLoading.collectAsState()
+                val skipObjectsError by viewModel.skipObjectsError.collectAsState()
+                val skipObjectsPlateImage by viewModel.skipObjectsPlateImage.collectAsState()
+
                 when {
+                    // Skip Objects screen
+                    showSkipObjects -> {
+                        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+                        BackHandler { showSkipObjects = false }
+                        SkipObjectsScreen(
+                            objects = skipObjectsList,
+                            skippedObjectIds = printerStatus.skippedObjects,
+                            isLoading = skipObjectsLoading,
+                            error = skipObjectsError,
+                            gcodeState = printerStatus.gcodeState,
+                            layerNum = printerStatus.layerNum,
+                            plateImage = skipObjectsPlateImage,
+                            onLoadObjects = { viewModel.loadSkipObjects() },
+                            onSkipSelected = { viewModel.skipSelectedObjects(it) },
+                            onClearError = { viewModel.clearSkipObjectsError() },
+                            onBack = { showSkipObjects = false },
+                        )
+                    }
                     // Video player — shown when timelapse file is downloaded
                     showTimelapse && timelapsePlaybackFile != null -> {
                         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
@@ -379,6 +404,7 @@ class MainActivity : ComponentActivity() {
                             showPrinterSettings = false
                             showFileManager = false
                             showTimelapse = false
+                            showSkipObjects = false
                             viewModel.closeFileManager()
                             viewModel.closeTimelapse()
                             viewModel.disconnect()
@@ -427,6 +453,9 @@ class MainActivity : ComponentActivity() {
                                 viewModel.openTimelapse()
                                 showTimelapse = true
                             },
+                            onOpenSkipObjects = {
+                                showSkipObjects = true
+                            },
                             onSetSpeedLevel = { viewModel.setSpeedLevel(it) },
                             onSetNozzleTemperature = { viewModel.setNozzleTemperature(it) },
                             onSetBedTemperature = { viewModel.setBedTemperature(it) },
@@ -448,6 +477,7 @@ class MainActivity : ComponentActivity() {
                         showPrinterSettings = false
                         showFileManager = false
                         showTimelapse = false
+                        showSkipObjects = false
                         ConnectionScreen(
                             connectionState = connectionState,
                             errorMessage = errorMessage,

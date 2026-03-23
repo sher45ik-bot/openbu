@@ -33,6 +33,7 @@ data class PrinterStatus(
     val amsUnits: List<AmsUnit> = emptyList(),
     val vtTray: AmsTray? = null,
     val spdLvl: Int = 2, // 2 = Normal = 100%
+    val skippedObjects: List<Int> = emptyList(), // from s_obj
 )
 
 data class SavedPrinter(

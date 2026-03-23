@@ -11,6 +11,7 @@ import kotlinx.coroutines.launch
 import org.cygnusx1.openbu.data.FilamentProfile
 import org.json.JSONArray
 import org.json.JSONObject
+import java.util.concurrent.atomic.AtomicInteger
 import kotlin.math.floor
 import kotlin.math.roundToInt
 import java.io.BufferedOutputStream
@@ -59,6 +60,7 @@ class BambuMqttClient(
     private var socket: SSLSocket? = null
     private var socketOutput: OutputStream? = null
     private val amsModelMap = mutableMapOf<String, String>()
+    private val nextPacketId = AtomicInteger(2)
 
     fun connect(scope: CoroutineScope) {
         scope.launch(Dispatchers.IO) {
@@ -129,6 +131,7 @@ class BambuMqttClient(
 
                     when (packetType) {
                         3 -> handlePublish(payload) // PUBLISH
+                        4 -> if (debugLogging) Log.d(TAG, "PUBACK received") // PUBACK
                         13 -> {                      // PINGREQ
                             out.write(byteArrayOf(0xD0.toByte(), 0x00))
                             out.flush()
@@ -387,6 +390,29 @@ class BambuMqttClient(
         }
     }
 
+    fun skipObjects(objectIds: List<Int>) {
+        val out = socketOutput ?: return
+        val packetId = nextPacketId.getAndIncrement()
+        val json = JSONObject().apply {
+            put("print", JSONObject().apply {
+                put("sequence_id", packetId.toString())
+                put("command", "skip_objects")
+                put("obj_list", JSONArray(objectIds))
+            })
+        }
+        try {
+            val topic = "device/$serialNumber/request"
+            if (debugLogging) Log.d(TAG, "Publishing skip_objects ids=$objectIds to $topic (QoS 1, packetId=$packetId)")
+            val packet = buildPublishPacketQoS1(topic, json.toString(), packetId)
+            synchronized(out) {
+                out.write(packet)
+                out.flush()
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to publish skip_objects", e)
+        }
+    }
+
     private fun requestStatus() {
         val out = socketOutput ?: return
         val json = JSONObject().apply {
@@ -605,6 +631,22 @@ class BambuMqttClient(
             }
         }
 
+        // Parse s_obj: JSON array of skipped object IDs
+        val skippedObjects = if (print.has("s_obj")) {
+            val arr = print.optJSONArray("s_obj")
+            if (arr != null) {
+                (0 until arr.length()).mapNotNull { i ->
+                    val v = arr.opt(i)
+                    when (v) {
+                        is Int -> v
+                        is Number -> v.toInt()
+                        is String -> v.toIntOrNull()
+                        else -> null
+                    }
+                }
+            } else current.skippedObjects
+        } else current.skippedObjects
+
         val newStatus = PrinterStatus(
             gcodeState = gcodeState,
             gcodeFile = gcodeFile,
@@ -623,6 +665,7 @@ class BambuMqttClient(
             amsUnits = amsUnits,
             vtTray = vtTray,
             spdLvl = spdLvl,
+            skippedObjects = skippedObjects,
         )
         _printerStatus.value = newStatus
 
@@ -675,6 +718,18 @@ class BambuMqttClient(
         d.flush()
 
         return wrapMqttPacket(0x30, varHeaderAndPayload.toByteArray())
+    }
+
+    private fun buildPublishPacketQoS1(topic: String, message: String, packetId: Int): ByteArray {
+        val varHeaderAndPayload = ByteArrayOutputStream()
+        val d = DataOutputStream(varHeaderAndPayload)
+        d.writeShort(topic.length)
+        d.write(topic.toByteArray())
+        d.writeShort(packetId)
+        d.write(message.toByteArray(Charsets.UTF_8))
+        d.flush()
+
+        return wrapMqttPacket(0x32, varHeaderAndPayload.toByteArray())
     }
 
     private fun wrapMqttPacket(fixedHeaderByte: Int, body: ByteArray): ByteArray {

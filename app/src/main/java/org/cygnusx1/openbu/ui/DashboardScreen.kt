@@ -141,6 +141,7 @@ fun DashboardScreen(
     onOpenPrinterSettings: () -> Unit,
     onOpenFileManager: () -> Unit,
     onOpenTimelapse: () -> Unit,
+    onOpenSkipObjects: () -> Unit,
     onSetSpeedLevel: (Int) -> Unit,
     onSetNozzleTemperature: (Int) -> Unit,
     onSetBedTemperature: (Int) -> Unit,
@@ -332,6 +333,16 @@ fun DashboardScreen(
                             onOpenTimelapse()
                         },
                         icon = { Icon(Icons.Filled.Videocam, contentDescription = null) },
+                        modifier = Modifier.padding(horizontal = 12.dp),
+                    )
+                    NavigationDrawerItem(
+                        label = { Text("Skip Objects") },
+                        selected = false,
+                        onClick = {
+                            scope.launch { drawerState.close() }
+                            onOpenSkipObjects()
+                        },
+                        icon = { Icon(Icons.Filled.Close, contentDescription = null) },
                         modifier = Modifier.padding(horizontal = 12.dp),
                     )
                 }
