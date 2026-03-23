@@ -113,7 +113,8 @@ import org.cygnusx1.openbu.network.AmsTray
 import org.cygnusx1.openbu.network.AmsUnit
 import org.cygnusx1.openbu.network.PrinterStatus
 
-private val CardPadding = 8.dp
+private val HorizontalCardPadding = 4.dp
+private val VerticalCardPadding = 4.dp
 
 @Composable
 fun DashboardScreen(
@@ -266,7 +267,7 @@ fun DashboardScreen(
         drawerState = drawerState,
         drawerContent = {
             ModalDrawerSheet(modifier = Modifier.width(280.dp)) {
-                Spacer(modifier = Modifier.height(CardPadding))
+                Spacer(modifier = Modifier.height(VerticalCardPadding))
                 Text(
                     text = "Openbu",
                     style = MaterialTheme.typography.headlineSmall,
@@ -472,19 +473,19 @@ fun DashboardScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(CardPadding))
+            Spacer(modifier = Modifier.height(VerticalCardPadding))
         }
 
         // Internal RTSP stream (non-P1 printer built-in camera)
         if (showMainStream && internalRtspPlayer != null) {
             RtspStreamCard(player = internalRtspPlayer, onClick = onOpenInternalRtspFullscreen)
-            Spacer(modifier = Modifier.height(CardPadding))
+            Spacer(modifier = Modifier.height(VerticalCardPadding))
         }
 
         // External RTSP stream
         if (rtspPlayer != null) {
             RtspStreamCard(player = rtspPlayer, onClick = onOpenRtspFullscreen)
-            Spacer(modifier = Modifier.height(CardPadding))
+            Spacer(modifier = Modifier.height(VerticalCardPadding))
         }
 
         // Chamber light control
@@ -495,7 +496,7 @@ fun DashboardScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(CardPadding),
+                    .padding(horizontal = HorizontalCardPadding, vertical = VerticalCardPadding),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -516,7 +517,7 @@ fun DashboardScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(CardPadding))
+        Spacer(modifier = Modifier.height(VerticalCardPadding))
 
         // Status
         PrintStatusCard(
@@ -524,7 +525,7 @@ fun DashboardScreen(
             onPrinterActionCommand = onPrinterActionCommand,
         )
 
-        Spacer(modifier = Modifier.height(CardPadding))
+        Spacer(modifier = Modifier.height(VerticalCardPadding))
 
         // Nozzle, Bed & Fan speeds
         Row(modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Max), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -567,7 +568,7 @@ fun DashboardScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(CardPadding))
+        Spacer(modifier = Modifier.height(VerticalCardPadding))
 
         // AMS cards — full-width AMS, half-width AMS-HT + External Spool
         val fullWidthAms = printerStatus.amsUnits.filter { it.model.isEmpty() || it.model.equals("AMS", ignoreCase = true) }
@@ -583,7 +584,7 @@ fun DashboardScreen(
                     trayInfoIdx = tray.trayInfoIdx,
                 )
             }
-            Spacer(modifier = Modifier.height(CardPadding))
+            Spacer(modifier = Modifier.height(VerticalCardPadding))
         }
 
         // Half-width items: AMS-HT units + External Spool, paired into rows
@@ -591,7 +592,7 @@ fun DashboardScreen(
         while (halfIndex < halfWidthAms.size) {
             Row(
                 modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Max),
-                horizontalArrangement = Arrangement.spacedBy(CardPadding),
+                horizontalArrangement = Arrangement.spacedBy(HorizontalCardPadding),
             ) {
                 val unit = halfWidthAms[halfIndex]
                 AmsCard(unit, modifier = Modifier.weight(1f).fillMaxHeight()) { tray ->
@@ -630,7 +631,7 @@ fun DashboardScreen(
                     halfIndex++ // signal we used external spool
                 }
             }
-            Spacer(modifier = Modifier.height(CardPadding))
+            Spacer(modifier = Modifier.height(VerticalCardPadding))
         }
 
         // External spool — full-width if not already paired above
@@ -644,7 +645,7 @@ fun DashboardScreen(
                     trayInfoIdx = printerStatus.vtTray?.trayInfoIdx ?: "",
                 )
             }
-            Spacer(modifier = Modifier.height(CardPadding))
+            Spacer(modifier = Modifier.height(VerticalCardPadding))
         }
 
         Spacer(modifier = Modifier.height(32.dp))
@@ -699,7 +700,7 @@ private fun PrintStatusCard(
         shape = RoundedCornerShape(12.dp),
     ) {
         Column(
-            modifier = Modifier.padding(CardPadding),
+            modifier = Modifier.padding(horizontal = HorizontalCardPadding, vertical = VerticalCardPadding),
         ) {
             // State + remaining time
             Row(
@@ -845,7 +846,7 @@ private fun IconStatusCard(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(CardPadding),
+                .padding(horizontal = HorizontalCardPadding, vertical = VerticalCardPadding),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
@@ -911,7 +912,7 @@ private fun LowDpiScaledContent(content: @Composable () -> Unit) {
     if (densityDpi > 420) {
         val current = LocalDensity.current
         CompositionLocalProvider(
-            LocalDensity provides Density(current.density, current.fontScale * 0.8f)
+            LocalDensity provides Density(current.density, current.fontScale * 0.75f)
         ) { content() }
     } else {
         content()
