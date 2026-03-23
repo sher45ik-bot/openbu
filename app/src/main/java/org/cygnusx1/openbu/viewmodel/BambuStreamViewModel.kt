@@ -212,6 +212,9 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
     private val _skipObjectsLoading = MutableStateFlow(false)
     val skipObjectsLoading: StateFlow<Boolean> = _skipObjectsLoading.asStateFlow()
 
+    private val _skipObjectsLoadingMessage = MutableStateFlow("Loading...")
+    val skipObjectsLoadingMessage: StateFlow<String> = _skipObjectsLoadingMessage.asStateFlow()
+
     private val _skipObjectsError = MutableStateFlow<String?>(null)
     val skipObjectsError: StateFlow<String?> = _skipObjectsError.asStateFlow()
 
@@ -622,15 +625,41 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
                 ftpClient = BambuFtpsClient(ip, code)
                 ftpClient.connect()
 
-                val tempFile = File.createTempFile("skip_obj_", ".3mf", getApplication<Application>().cacheDir)
-                try {
-                Log.d("BambuVM", "Downloading 3MF: /$gcodeFile")
-                FileOutputStream(tempFile).use { out ->
-                    ftpClient.downloadFile("/$gcodeFile", out)
+                // List root to get remote file size and timestamp
+                val rootFiles = ftpClient.listDirectory("/")
+                val remoteEntry = rootFiles.find { it.name == gcodeFile }
+                if (remoteEntry == null) {
+                    _skipObjectsError.value = "File not found on printer: $gcodeFile"
+                    return@launch
                 }
-                Log.d("BambuVM", "Downloaded 3MF: ${tempFile.length()} bytes")
 
-                val result = ThreeMfParser.extractObjects(tempFile)
+                val cacheDir = File(getApplication<Application>().cacheDir, "skip_objects")
+                cacheDir.mkdirs()
+                val cacheFile = File(cacheDir, gcodeFile)
+
+                // Check cache: matching size and timestamp
+                val cacheHit = cacheFile.exists()
+                    && cacheFile.length() == remoteEntry.size
+                    && cacheFile.lastModified() == parseFtpTimestamp(remoteEntry.lastModified)
+
+                if (cacheHit) {
+                    Log.d("BambuVM", "Cache hit for 3MF: $gcodeFile (${cacheFile.length()} bytes)")
+                    _skipObjectsLoadingMessage.value = "Loading from cache..."
+                } else {
+                    Log.d("BambuVM", "Downloading 3MF: /$gcodeFile (${remoteEntry.size} bytes, ts=${remoteEntry.lastModified})")
+                    _skipObjectsLoadingMessage.value = "Downloading 3MF from printer..."
+                    FileOutputStream(cacheFile).use { out ->
+                        ftpClient.downloadFile("/$gcodeFile", out)
+                    }
+                    // Set local file timestamp to match remote
+                    val remoteTs = parseFtpTimestamp(remoteEntry.lastModified)
+                    if (remoteTs > 0) {
+                        cacheFile.setLastModified(remoteTs)
+                    }
+                    Log.d("BambuVM", "Downloaded 3MF: ${cacheFile.length()} bytes")
+                }
+
+                val result = ThreeMfParser.extractObjects(cacheFile)
                 Log.d("BambuVM", "Parsed ${result.objects.size} objects from 3MF: ${result.objects}")
                 if (result.objects.size <= 1) {
                     _skipObjectsError.value = "Only one object on plate — nothing to skip"
@@ -638,9 +667,6 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
                 }
                 _skipObjectsList.value = result.objects
                 _skipObjectsPlateImage.value = result.plateImage
-                } finally {
-                    tempFile.delete()
-                }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -651,6 +677,37 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
                 _skipObjectsLoading.value = false
             }
         }
+    }
+
+    /**
+     * Parses FTP LIST timestamp strings like "Mar 23 14:48" or "Jan  1  2025" to epoch millis.
+     * Returns 0 if unparseable.
+     */
+    private fun parseFtpTimestamp(dateStr: String): Long {
+        val formats = arrayOf(
+            java.text.SimpleDateFormat("MMM dd HH:mm", java.util.Locale.US),
+            java.text.SimpleDateFormat("MMM dd  yyyy", java.util.Locale.US),
+            java.text.SimpleDateFormat("MMM  d HH:mm", java.util.Locale.US),
+            java.text.SimpleDateFormat("MMM  d  yyyy", java.util.Locale.US),
+        )
+        for (fmt in formats) {
+            try {
+                val date = fmt.parse(dateStr) ?: continue
+                val cal = java.util.Calendar.getInstance()
+                val parsed = java.util.Calendar.getInstance().apply { time = date }
+                // FTP timestamps without year default to current year
+                if (!dateStr.contains(Regex("\\d{4}"))) {
+                    parsed.set(java.util.Calendar.YEAR, cal.get(java.util.Calendar.YEAR))
+                    // If the parsed date is in the future, it's last year
+                    if (parsed.after(cal)) {
+                        parsed.add(java.util.Calendar.YEAR, -1)
+                    }
+                }
+                return parsed.timeInMillis
+            } catch (_: Exception) {}
+        }
+        Log.w("BambuVM", "Could not parse FTP timestamp: '$dateStr'")
+        return 0
     }
 
     fun skipSelectedObjects(objectIds: List<Int>) {

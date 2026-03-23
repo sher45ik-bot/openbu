@@ -62,6 +62,7 @@ fun SkipObjectsScreen(
     objects: List<PrintableObject>,
     skippedObjectIds: List<Int>,
     isLoading: Boolean,
+    loadingMessage: String,
     error: String?,
     gcodeState: String,
     layerNum: Int,
@@ -168,7 +169,7 @@ fun SkipObjectsScreen(
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             CircularProgressIndicator()
                             Spacer(modifier = Modifier.height(16.dp))
-                            Text("Downloading and parsing 3MF...")
+                            Text(loadingMessage)
                         }
                     }
                 }

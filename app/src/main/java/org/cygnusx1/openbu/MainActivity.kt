@@ -215,6 +215,7 @@ class MainActivity : ComponentActivity() {
 
                 val skipObjectsList by viewModel.skipObjectsList.collectAsState()
                 val skipObjectsLoading by viewModel.skipObjectsLoading.collectAsState()
+                val skipObjectsLoadingMessage by viewModel.skipObjectsLoadingMessage.collectAsState()
                 val skipObjectsError by viewModel.skipObjectsError.collectAsState()
                 val skipObjectsPlateImage by viewModel.skipObjectsPlateImage.collectAsState()
 
@@ -227,6 +228,7 @@ class MainActivity : ComponentActivity() {
                             objects = skipObjectsList,
                             skippedObjectIds = printerStatus.skippedObjects,
                             isLoading = skipObjectsLoading,
+                            loadingMessage = skipObjectsLoadingMessage,
                             error = skipObjectsError,
                             gcodeState = printerStatus.gcodeState,
                             layerNum = printerStatus.layerNum,
