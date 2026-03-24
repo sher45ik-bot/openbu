@@ -86,9 +86,6 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
     private val _debugLogging = MutableStateFlow(false)
     val debugLogging: StateFlow<Boolean> = _debugLogging.asStateFlow()
 
-    private val _extendedDebugLogging = MutableStateFlow(false)
-    val extendedDebugLogging: StateFlow<Boolean> = _extendedDebugLogging.asStateFlow()
-
     private val _customPrinterName = MutableStateFlow("")
     val customPrinterName: StateFlow<String> = _customPrinterName.asStateFlow()
 
@@ -255,7 +252,6 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
         _showMainStream.value = prefs.getBoolean("show_main_stream", true)
         _forceDarkMode.value = prefs.getBoolean("force_dark_mode", false)
         _debugLogging.value = prefs.getBoolean("debug_logging", false)
-        _extendedDebugLogging.value = prefs.getBoolean("extended_debug_logging", false)
         _autoSavePrinter.value = prefs.getBoolean("auto_save_printer", true)
 
         // Migrate stale global RTSP keys
@@ -350,15 +346,7 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
         _debugLogging.value = enabled
         prefs.edit().putBoolean("debug_logging", enabled).apply()
         mqttClient?.debugLogging = enabled
-        if (!enabled) {
-            setExtendedDebugLogging(false)
-        }
-    }
-
-    fun setExtendedDebugLogging(enabled: Boolean) {
-        _extendedDebugLogging.value = enabled
-        prefs.edit().putBoolean("extended_debug_logging", enabled).apply()
-        client?.extendedDebugLogging = enabled
+        client?.debugLogging = enabled
     }
 
     fun setAutoSavePrinter(enabled: Boolean) {
@@ -423,7 +411,7 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
         if (usesMjpegCamera(serialNumber)) {
             _showMainStream.value = prefs.getBoolean("show_main_stream", true)
             val bambuClient = BambuCameraClient(ip, accessCode)
-            bambuClient.extendedDebugLogging = _extendedDebugLogging.value
+            bambuClient.debugLogging = _debugLogging.value
             client = bambuClient
 
             streamJob = viewModelScope.launch {
@@ -781,7 +769,7 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
             delay(3000)
             if (userDisconnected) return@launch
             val bambuClient = BambuCameraClient(ip, code)
-            bambuClient.extendedDebugLogging = _extendedDebugLogging.value
+            bambuClient.debugLogging = _debugLogging.value
             client = bambuClient
             try {
                 var frameCount = 0

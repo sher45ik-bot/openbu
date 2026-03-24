@@ -109,7 +109,6 @@ class MainActivity : ComponentActivity() {
                 val rtspEnabled by viewModel.rtspEnabled.collectAsState()
                 val rtspUrl by viewModel.rtspUrl.collectAsState()
                 val debugLogging by viewModel.debugLogging.collectAsState()
-                val extendedDebugLogging by viewModel.extendedDebugLogging.collectAsState()
                 val discoveredPrinters by viewModel.discoveredPrinters.collectAsState()
                 val savedPrinters by viewModel.savedPrinters.collectAsState()
                 val connectedSerialNumber by viewModel.connectedSerialNumber.collectAsState()
@@ -335,8 +334,6 @@ class MainActivity : ComponentActivity() {
                             onForceDarkModeChanged = { viewModel.setForceDarkMode(it) },
                             debugLogging = debugLogging,
                             onDebugLoggingChanged = { viewModel.setDebugLogging(it) },
-                            extendedDebugLogging = extendedDebugLogging,
-                            onExtendedDebugLoggingChanged = { viewModel.setExtendedDebugLogging(it) },
                             mqttDataMessages = mqttDataMessages,
                             logcatText = logcatText,
                             accessCode = accessCode,

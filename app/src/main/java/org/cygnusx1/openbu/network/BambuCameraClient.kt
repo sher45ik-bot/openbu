@@ -35,18 +35,18 @@ class BambuCameraClient(
     private val readTimeoutMs: Int = 30_000,
 ) {
     @Volatile
-    var extendedDebugLogging: Boolean = false
+    var debugLogging: Boolean = false
 
     private var socket: SSLSocket? = null
 
     fun frameFlow(): Flow<Bitmap> = flow {
-        if (extendedDebugLogging) Log.d(TAG, "Connecting to camera at $ip:$port")
+        if (debugLogging) Log.d(TAG, "Connecting to camera at $ip:$port")
         val sslSocket = connect()
         socket = sslSocket
-        if (extendedDebugLogging) Log.d(TAG, "TLS connected, sending auth payload")
+        if (debugLogging) Log.d(TAG, "TLS connected, sending auth payload")
         try {
             sendAuthPayload(sslSocket)
-            if (extendedDebugLogging) Log.d(TAG, "Auth payload sent, waiting for frames")
+            if (debugLogging) Log.d(TAG, "Auth payload sent, waiting for frames")
             val input = sslSocket.inputStream
             val buf = ByteArray(4096)
             val frameBuffer = ByteArrayOutputStream(256 * 1024)
@@ -58,7 +58,7 @@ class BambuCameraClient(
                 val bytesRead = input.read(buf)
                 if (bytesRead == -1) throw IOException("Stream closed unexpectedly")
                 totalBytesRead += bytesRead
-                if (extendedDebugLogging && (totalBytesRead <= 8192 || totalBytesRead % 65536 == 0L)) {
+                if (debugLogging && (totalBytesRead <= 8192 || totalBytesRead % 65536 == 0L)) {
                     Log.d(TAG, "Read $bytesRead bytes (total: $totalBytesRead, frames: $frameCount, inFrame: $inFrame)")
                 }
 
@@ -72,7 +72,7 @@ class BambuCameraClient(
                             buf[i + 2] == 0xFF.toByte() &&
                             buf[i + 3] == 0xE0.toByte()
                         ) {
-                            if (extendedDebugLogging) Log.d(TAG, "Found SOI at offset $i in chunk")
+                            if (debugLogging) Log.d(TAG, "Found SOI at offset $i in chunk")
                             frameBuffer.reset()
                             frameBuffer.write(buf, i, bytesRead - i)
                             inFrame = true
@@ -87,11 +87,11 @@ class BambuCameraClient(
                         val eoiPos = findEoi(data)
                         if (eoiPos >= 0) {
                             val jpegData = data.copyOfRange(0, eoiPos + 2)
-                            if (extendedDebugLogging) Log.d(TAG, "Found EOI, JPEG size: ${jpegData.size} bytes")
+                            if (debugLogging) Log.d(TAG, "Found EOI, JPEG size: ${jpegData.size} bytes")
                             val bitmap = BitmapFactory.decodeByteArray(jpegData, 0, jpegData.size)
                             if (bitmap != null) {
                                 frameCount++
-                                if (extendedDebugLogging) Log.d(TAG, "Frame $frameCount decoded: ${bitmap.width}x${bitmap.height}")
+                                if (debugLogging) Log.d(TAG, "Frame $frameCount decoded: ${bitmap.width}x${bitmap.height}")
                                 emit(bitmap)
                             } else {
                                 Log.w(TAG, "BitmapFactory.decodeByteArray returned null for ${jpegData.size} bytes (first bytes: ${jpegData.take(8).joinToString(" ") { "%02X".format(it) }})")
@@ -109,7 +109,7 @@ class BambuCameraClient(
                 }
             }
         } finally {
-            if (extendedDebugLogging) Log.d(TAG, "Frame flow ended")
+            if (debugLogging) Log.d(TAG, "Frame flow ended")
             close()
         }
     }.flowOn(Dispatchers.IO)
