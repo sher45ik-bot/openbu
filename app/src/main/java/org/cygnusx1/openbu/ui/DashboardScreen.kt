@@ -693,15 +693,17 @@ private fun PrintStatusCard(
         else -> ""
     }
 
-    val etaText = if (remainingMin > 0) {
+    val showEta = printerStatus.gcodeState != "FAILED"
+
+    val etaText = if (showEta && remainingMin > 0) {
         val cal = Calendar.getInstance().apply { add(Calendar.MINUTE, remainingMin) }
         val fmt = SimpleDateFormat("h:mma", Locale.getDefault())
         "(ETA ${fmt.format(cal.time).lowercase()})"
     } else ""
 
     val timeText = when {
-        remainingMin > 0 && totalMin > 0 -> "${formatTime(remainingMin)} / ${formatTime(totalMin)} $etaText"
-        remainingMin > 0 -> "${formatTime(remainingMin)} $etaText"
+        showEta && remainingMin > 0 && totalMin > 0 -> "${formatTime(remainingMin)} / ${formatTime(totalMin)} $etaText"
+        showEta && remainingMin > 0 -> "${formatTime(remainingMin)} $etaText"
         else -> ""
     }
 
