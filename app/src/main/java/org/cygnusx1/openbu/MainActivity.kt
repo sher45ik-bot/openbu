@@ -31,7 +31,6 @@ import javax.net.ssl.SSLContext
 import javax.net.ssl.TrustManager
 import javax.net.ssl.X509TrustManager
 import org.cygnusx1.openbu.data.FilamentRepository
-import org.cygnusx1.openbu.data.printerSeriesFromSerial
 import org.cygnusx1.openbu.ui.ConnectionScreen
 import org.cygnusx1.openbu.ui.DashboardScreen
 import org.cygnusx1.openbu.ui.FileManagerScreen
@@ -106,7 +105,6 @@ class MainActivity : ComponentActivity() {
                 val keepConnectionInBackground by viewModel.keepConnectionInBackground.collectAsState()
                 val showMainStream by viewModel.showMainStream.collectAsState()
                 val autoSavePrinter by viewModel.autoSavePrinter.collectAsState()
-                val bypassMjpegRestriction by viewModel.bypassMjpegRestriction.collectAsState()
                 val internalRtspUrl by viewModel.internalRtspUrl.collectAsState()
                 val rtspEnabled by viewModel.rtspEnabled.collectAsState()
                 val rtspUrl by viewModel.rtspUrl.collectAsState()
@@ -339,9 +337,6 @@ class MainActivity : ComponentActivity() {
                             onDebugLoggingChanged = { viewModel.setDebugLogging(it) },
                             extendedDebugLogging = extendedDebugLogging,
                             onExtendedDebugLoggingChanged = { viewModel.setExtendedDebugLogging(it) },
-                            bypassMjpegRestriction = bypassMjpegRestriction,
-                            onBypassMjpegRestrictionChanged = { viewModel.setBypassMjpegRestriction(it) },
-                            isMjpegPrinter = printerSeriesFromSerial(connectedSerialNumber).usesMjpegCamera,
                             mqttDataMessages = mqttDataMessages,
                             logcatText = logcatText,
                             accessCode = accessCode,
@@ -463,7 +458,6 @@ class MainActivity : ComponentActivity() {
                             onOpenSkipObjects = {
                                 showSkipObjects = true
                             },
-                            bypassMjpegRestriction = bypassMjpegRestriction,
                             onSetSpeedLevel = { viewModel.setSpeedLevel(it) },
                             onSetNozzleTemperature = { viewModel.setNozzleTemperature(it) },
                             onSetBedTemperature = { viewModel.setBedTemperature(it) },

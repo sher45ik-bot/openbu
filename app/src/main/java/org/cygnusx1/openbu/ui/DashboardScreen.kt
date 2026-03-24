@@ -144,7 +144,6 @@ fun DashboardScreen(
     onOpenFileManager: () -> Unit,
     onOpenTimelapse: () -> Unit,
     onOpenSkipObjects: () -> Unit,
-    bypassMjpegRestriction: Boolean = false,
     onSetSpeedLevel: (Int) -> Unit,
     onSetNozzleTemperature: (Int) -> Unit,
     onSetBedTemperature: (Int) -> Unit,
@@ -318,38 +317,36 @@ fun DashboardScreen(
                     icon = { Icon(Icons.Filled.Print, contentDescription = null) },
                     modifier = Modifier.padding(horizontal = 12.dp),
                 )
-                if (series.usesMjpegCamera || bypassMjpegRestriction) {
-                    NavigationDrawerItem(
-                        label = { Text("File Manager") },
-                        selected = false,
-                        onClick = {
-                            scope.launch { drawerState.close() }
-                            onOpenFileManager()
-                        },
-                        icon = { Icon(Icons.Filled.Folder, contentDescription = null) },
-                        modifier = Modifier.padding(horizontal = 12.dp),
-                    )
-                    NavigationDrawerItem(
-                        label = { Text("Timelapses") },
-                        selected = false,
-                        onClick = {
-                            scope.launch { drawerState.close() }
-                            onOpenTimelapse()
-                        },
-                        icon = { Icon(Icons.Filled.Videocam, contentDescription = null) },
-                        modifier = Modifier.padding(horizontal = 12.dp),
-                    )
-                    NavigationDrawerItem(
-                        label = { Text("Skip Objects") },
-                        selected = false,
-                        onClick = {
-                            scope.launch { drawerState.close() }
-                            onOpenSkipObjects()
-                        },
-                        icon = { Icon(Icons.Filled.Close, contentDescription = null) },
-                        modifier = Modifier.padding(horizontal = 12.dp),
-                    )
-                }
+                NavigationDrawerItem(
+                    label = { Text("File Manager") },
+                    selected = false,
+                    onClick = {
+                        scope.launch { drawerState.close() }
+                        onOpenFileManager()
+                    },
+                    icon = { Icon(Icons.Filled.Folder, contentDescription = null) },
+                    modifier = Modifier.padding(horizontal = 12.dp),
+                )
+                NavigationDrawerItem(
+                    label = { Text("Timelapses") },
+                    selected = false,
+                    onClick = {
+                        scope.launch { drawerState.close() }
+                        onOpenTimelapse()
+                    },
+                    icon = { Icon(Icons.Filled.Videocam, contentDescription = null) },
+                    modifier = Modifier.padding(horizontal = 12.dp),
+                )
+                NavigationDrawerItem(
+                    label = { Text("Skip Objects") },
+                    selected = false,
+                    onClick = {
+                        scope.launch { drawerState.close() }
+                        onOpenSkipObjects()
+                    },
+                    icon = { Icon(Icons.Filled.Close, contentDescription = null) },
+                    modifier = Modifier.padding(horizontal = 12.dp),
+                )
                 HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
                 NavigationDrawerItem(
                     label = { Text("Settings") },

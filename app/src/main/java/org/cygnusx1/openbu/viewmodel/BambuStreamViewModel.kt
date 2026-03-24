@@ -101,9 +101,6 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
     private val _autoSavePrinter = MutableStateFlow(true)
     val autoSavePrinter: StateFlow<Boolean> = _autoSavePrinter.asStateFlow()
 
-    private val _bypassMjpegRestriction = MutableStateFlow(false)
-    val bypassMjpegRestriction: StateFlow<Boolean> = _bypassMjpegRestriction.asStateFlow()
-
     private val _customBgColor = MutableStateFlow<Int?>(null)
     val customBgColor: StateFlow<Int?> = _customBgColor.asStateFlow()
 
@@ -260,7 +257,6 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
         _debugLogging.value = prefs.getBoolean("debug_logging", false)
         _extendedDebugLogging.value = prefs.getBoolean("extended_debug_logging", false)
         _autoSavePrinter.value = prefs.getBoolean("auto_save_printer", true)
-        _bypassMjpegRestriction.value = prefs.getBoolean("bypass_mjpeg_restriction", false)
 
         // Migrate stale global RTSP keys
         if (prefs.contains("rtsp_enabled") || prefs.contains("rtsp_url")) {
@@ -368,11 +364,6 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
     fun setAutoSavePrinter(enabled: Boolean) {
         _autoSavePrinter.value = enabled
         prefs.edit().putBoolean("auto_save_printer", enabled).apply()
-    }
-
-    fun setBypassMjpegRestriction(enabled: Boolean) {
-        _bypassMjpegRestriction.value = enabled
-        prefs.edit().putBoolean("bypass_mjpeg_restriction", enabled).apply()
     }
 
     private fun saveCredentials(ip: String, accessCode: String, serialNumber: String) {
