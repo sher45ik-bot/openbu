@@ -113,6 +113,8 @@ import org.cygnusx1.openbu.network.AmsTray
 import org.cygnusx1.openbu.network.AmsUnit
 import org.cygnusx1.openbu.network.PrinterStatus
 
+var lowResolution by mutableStateOf(false)
+
 private val HorizontalCardPadding = 4.dp
 private val VerticalCardPadding = 4.dp
 
@@ -150,6 +152,7 @@ fun DashboardScreen(
     filaments: List<FilamentProfile> = emptyList(),
     onSetFilament: (Int, Int, FilamentProfile, String) -> Unit = { _, _, _, _ -> },
 ) {
+    lowResolution = LocalConfiguration.current.densityDpi >= 420
     val series = printerSeriesFromSerial(serialNumber)
     val isEnclosed = series.isEnclosed
     var showSpeedDialog by remember { mutableStateOf(false) }
@@ -919,15 +922,10 @@ private fun AmsCard(amsUnit: AmsUnit, modifier: Modifier = Modifier, onTrayClick
 
 @Composable
 private fun LowDpiScaledContent(content: @Composable () -> Unit) {
-    val densityDpi = LocalConfiguration.current.densityDpi
-    if (densityDpi > 420) {
-        val current = LocalDensity.current
-        CompositionLocalProvider(
-            LocalDensity provides Density(current.density, current.fontScale * 0.75f)
-        ) { content() }
-    } else {
-        content()
-    }
+    val current = LocalDensity.current
+    CompositionLocalProvider(
+        LocalDensity provides Density(current.density, current.fontScale * 0.75f)
+    ) { content() }
 }
 
 @Composable
@@ -1336,7 +1334,7 @@ private fun TemperatureDialog(
                     Text(
                         text = "$targetTemp °C",
                         style = MaterialTheme.typography.headlineMedium,
-                        modifier = Modifier.padding(horizontal = 96.dp),
+                        modifier = Modifier.padding(horizontal = if (lowResolution) 48.dp else 96.dp),
                     )
                     RepeatingIconButton(onClick = { targetTemp = (targetTemp + 1).coerceAtMost(maxTemp) }) {
                         Text("+", style = MaterialTheme.typography.headlineMedium)
@@ -1442,7 +1440,7 @@ private fun FanSpeedDialog(
                     Text(
                         text = "$targetSpeed%",
                         style = MaterialTheme.typography.headlineMedium,
-                        modifier = Modifier.padding(horizontal = 96.dp),
+                        modifier = Modifier.padding(horizontal = if (lowResolution) 48.dp else 96.dp),
                     )
                     RepeatingIconButton(onClick = { targetSpeed = (targetSpeed + 10).coerceAtMost(100) }) {
                         Text("+", style = MaterialTheme.typography.headlineMedium)
