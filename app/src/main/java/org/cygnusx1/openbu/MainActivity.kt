@@ -23,6 +23,7 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.rtsp.RtspMediaSource
 import kotlinx.coroutines.launch
@@ -133,7 +134,9 @@ class MainActivity : ComponentActivity() {
                 fun createRtspPlayer(url: String, tag: String): ExoPlayer {
                     val isRtsps = url.startsWith("rtsps://")
                     Log.d(tag, "Creating player: isRtsps=$isRtsps, url=$url")
-                    return ExoPlayer.Builder(this@MainActivity).build().apply {
+                    val renderersFactory = DefaultRenderersFactory(this@MainActivity)
+                        .setEnableDecoderFallback(true)
+                    return ExoPlayer.Builder(this@MainActivity, renderersFactory).build().apply {
                         addListener(object : Player.Listener {
                             override fun onPlaybackStateChanged(playbackState: Int) {
                                 val stateName = when (playbackState) {
