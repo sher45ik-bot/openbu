@@ -51,6 +51,9 @@ fun SettingsScreen(
     onDebugLoggingChanged: (Boolean) -> Unit,
     extendedDebugLogging: Boolean,
     onExtendedDebugLoggingChanged: (Boolean) -> Unit,
+    bypassMjpegRestriction: Boolean,
+    onBypassMjpegRestrictionChanged: (Boolean) -> Unit,
+    isMjpegPrinter: Boolean,
     mqttDataMessages: List<String>,
     logcatText: String,
     accessCode: String,
@@ -181,6 +184,41 @@ fun SettingsScreen(
                 Switch(
                     checked = autoSavePrinter,
                     onCheckedChange = onAutoSavePrinterChanged,
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Bypass MJPEG restriction
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Bypass MJPEG restriction",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = if (isMjpegPrinter) {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        } else {
+                            MaterialTheme.colorScheme.onBackground
+                        },
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = if (isMjpegPrinter) {
+                            "Not needed for this printer series"
+                        } else {
+                            "Enable FTPS features (Skip Objects, File Manager, Timelapses) on non-MJPEG printers. Only tested on A1 and P1 series."
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Switch(
+                    checked = bypassMjpegRestriction,
+                    onCheckedChange = onBypassMjpegRestrictionChanged,
+                    enabled = !isMjpegPrinter,
                 )
             }
 

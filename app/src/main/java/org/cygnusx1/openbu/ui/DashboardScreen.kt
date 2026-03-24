@@ -144,6 +144,7 @@ fun DashboardScreen(
     onOpenFileManager: () -> Unit,
     onOpenTimelapse: () -> Unit,
     onOpenSkipObjects: () -> Unit,
+    bypassMjpegRestriction: Boolean = false,
     onSetSpeedLevel: (Int) -> Unit,
     onSetNozzleTemperature: (Int) -> Unit,
     onSetBedTemperature: (Int) -> Unit,
@@ -317,7 +318,7 @@ fun DashboardScreen(
                     icon = { Icon(Icons.Filled.Print, contentDescription = null) },
                     modifier = Modifier.padding(horizontal = 12.dp),
                 )
-                if (series.usesMjpegCamera) {
+                if (series.usesMjpegCamera || bypassMjpegRestriction) {
                     NavigationDrawerItem(
                         label = { Text("File Manager") },
                         selected = false,
