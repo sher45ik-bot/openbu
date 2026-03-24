@@ -10,13 +10,12 @@ if (keystorePropertiesFile.exists()) {
 
 plugins {
     id("com.android.application")
-    id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
 android {
     namespace = "org.cygnusx1.openbu"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "org.cygnusx1.openbu"
@@ -54,36 +53,44 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    kotlinOptions {
-        jvmTarget = "17"
+    kotlin {
+        compilerOptions {
+            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+        }
     }
 
     buildFeatures {
         compose = true
     }
 
-    applicationVariants.all {
-        val appName = "openbu"
-        val buildTypeName = buildType.name
-        val vName = versionName
-
-        outputs.all {
-            val output = this as com.android.build.gradle.internal.api.BaseVariantOutputImpl
-            val abiFilter = output.filters.find { it.filterType == "ABI" }?.identifier ?: "universal"
-
-            val artifactName = if (buildTypeName == "debug") {
-                "${appName}-${buildTypeName}-${abiFilter}-${vName}"
-            } else {
-                "${appName}-${abiFilter}-${vName}"
-            }
-
-            output.outputFileName = "${artifactName}.apk"
-        }
-    }
-
     if (!keystorePropertiesFile.exists()) {
         logger.warn("Warning: keystore.properties file not found. Skipping signing configuration for withGPlay.")
     }
+}
+
+tasks.register("renameApks") {
+    doLast {
+        val appName = "openbu"
+        val vName = android.defaultConfig.versionName ?: "unknown"
+        fileTree("build/outputs/apk") {
+            include("**/*.apk")
+        }.forEach { apk ->
+            val buildTypeName = apk.parentFile.name
+            val artifactName = if (buildTypeName == "debug") {
+                "${appName}-${buildTypeName}-universal-${vName}"
+            } else {
+                "${appName}-universal-${vName}"
+            }
+            val dest = File(apk.parentFile, "${artifactName}.apk")
+            if (apk.name != dest.name) {
+                apk.renameTo(dest)
+            }
+        }
+    }
+}
+
+tasks.matching { it.name.startsWith("assemble") }.configureEach {
+    finalizedBy("renameApks")
 }
 
 dependencies {
@@ -97,9 +104,12 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.7")
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
-    implementation("androidx.media3:media3-exoplayer:1.8.0")
-    implementation("androidx.media3:media3-exoplayer-rtsp:1.8.0")
-    implementation("androidx.media3:media3-ui:1.8.0")
+
+    // TODO Update this to a non-release candidate version
+    implementation("androidx.media3:media3-exoplayer:1.10.0-rc03")
+    implementation("androidx.media3:media3-exoplayer-rtsp:1.10.0-rc03")
+    implementation("androidx.media3:media3-ui:1.10.0-rc03")
+
     implementation("org.videolan.android:libvlc-all:3.6.5")
     debugImplementation("androidx.compose.ui:ui-tooling")
 }
