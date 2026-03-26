@@ -43,9 +43,15 @@ class BambuFtpsClient(
         rawSocket.connect(InetSocketAddress(ip, port), 10_000)
         rawSocket.soTimeout = 30_000
 
+        Log.d(TAG, "Creating SSL socket to $ip:$port")
         val ssl = sslContext.socketFactory.createSocket(rawSocket, ip, port, true) as SSLSocket
         ssl.sslParameters = ssl.sslParameters.apply { endpointIdentificationAlgorithm = null }
+        Log.d(TAG, "Enabled protocols: ${ssl.enabledProtocols.joinToString()}")
+        Log.d(TAG, "Enabled cipher suites: ${ssl.enabledCipherSuites.joinToString()}")
+        Log.d(TAG, "Starting TLS handshake...")
         ssl.startHandshake()
+        val session = ssl.session
+        Log.d(TAG, "TLS handshake complete: protocol=${session.protocol}, cipher=${session.cipherSuite}")
 
         controlSocket = ssl
         reader = BufferedReader(InputStreamReader(ssl.inputStream))
