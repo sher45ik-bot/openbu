@@ -69,23 +69,24 @@ android {
 }
 
 tasks.register("renameApks") {
+    val appName = "openbu"
+    val vName = android.defaultConfig.versionName ?: "unknown"
+    val apkDir = layout.buildDirectory.dir("outputs/apk")
     doLast {
-        val appName = "openbu"
-        val vName = android.defaultConfig.versionName ?: "unknown"
-        fileTree("build/outputs/apk") {
-            include("**/*.apk")
-        }.forEach { apk ->
-            val buildTypeName = apk.parentFile.name
-            val artifactName = if (buildTypeName == "debug") {
-                "${appName}-${buildTypeName}-universal-${vName}"
-            } else {
-                "${appName}-universal-${vName}"
+        apkDir.get().asFile.walkTopDown()
+            .filter { it.extension == "apk" }
+            .forEach { apk ->
+                val buildTypeName = apk.parentFile.name
+                val artifactName = if (buildTypeName == "debug") {
+                    "${appName}-${buildTypeName}-universal-${vName}"
+                } else {
+                    "${appName}-universal-${vName}"
+                }
+                val dest = File(apk.parentFile, "${artifactName}.apk")
+                if (apk.name != dest.name) {
+                    apk.renameTo(dest)
+                }
             }
-            val dest = File(apk.parentFile, "${artifactName}.apk")
-            if (apk.name != dest.name) {
-                apk.renameTo(dest)
-            }
-        }
     }
 }
 
