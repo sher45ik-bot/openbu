@@ -36,6 +36,23 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 
+private fun redactLogText(text: String, accessCode: String, serialNumber: String): String {
+    var redacted = text
+    if (accessCode.isNotEmpty()) {
+        redacted = redacted.replace(accessCode, "REDACTED")
+    }
+    if (serialNumber.isNotEmpty()) {
+        redacted = redacted.replace(serialNumber, "REDACTED")
+    }
+    // Redact passwords (e.g., "PASS a1b2c3d4")
+    redacted = Regex("""(?<=PASS )\S+""").replace(redacted, "REDACTED")
+    // Redact IP addresses (e.g., "10.0.0.1")
+    redacted = Regex("""\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b""").replace(redacted, "REDACTED")
+    // Redact PASV IP format (e.g., "(10,0,0,1,7,232)")
+    redacted = Regex("""\(\d{1,3},\d{1,3},\d{1,3},\d{1,3},""").replace(redacted, "(REDACTED,")
+    return redacted
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
@@ -49,6 +66,8 @@ fun SettingsScreen(
     onForceDarkModeChanged: (Boolean) -> Unit,
     debugLogging: Boolean,
     onDebugLoggingChanged: (Boolean) -> Unit,
+    redactLogs: Boolean,
+    onRedactLogsChanged: (Boolean) -> Unit,
     mqttDataMessages: List<String>,
     logcatText: String,
     accessCode: String,
@@ -242,6 +261,32 @@ fun SettingsScreen(
                 )
             }
 
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Redact logs toggle
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Redact logs",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onBackground,
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = "Redact sensitive data (passwords, IPs, serial numbers) when copying logs",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Switch(
+                    checked = redactLogs,
+                    onCheckedChange = onRedactLogsChanged,
+                )
+            }
+
             Spacer(modifier = Modifier.height(8.dp))
 
             Row(
@@ -322,21 +367,18 @@ fun SettingsScreen(
                 )
             },
             confirmButton = {
-                Row {
-                    TextButton(onClick = {
-                        clipboardManager.setText(AnnotatedString(bodyText))
-                    }) {
-                        Text("Copy")
-                    }
-                    TextButton(onClick = {
-                        val redacted = Regex(""""(sn|ams_id|subtask_name)"\s*:\s*"[^"]*"""")
+                TextButton(onClick = {
+                    val text = if (redactLogs) {
+                        Regex(""""(sn|ams_id|subtask_name)"\s*:\s*"[^"]*"""")
                             .replace(bodyText) { match ->
                                 "\"${match.groupValues[1]}\": \"REDACTED\""
                             }
-                        clipboardManager.setText(AnnotatedString(redacted))
-                    }) {
-                        Text("Copy Redacted")
+                    } else {
+                        bodyText
                     }
+                    clipboardManager.setText(AnnotatedString(text))
+                }) {
+                    Text(if (redactLogs) "Copy Redacted" else "Copy")
                 }
             },
             dismissButton = {
@@ -348,7 +390,12 @@ fun SettingsScreen(
     }
 
     if (showLogcatDialog) {
-        val bodyText = logcatText.ifEmpty { "No logs captured yet." }
+        val rawText = logcatText.ifEmpty { "No logs captured yet." }
+        val bodyText = if (redactLogs) {
+            redactLogText(rawText, accessCode, serialNumber)
+        } else {
+            rawText
+        }
 
         AlertDialog(
             onDismissRequest = { showLogcatDialog = false },
@@ -362,24 +409,10 @@ fun SettingsScreen(
                 )
             },
             confirmButton = {
-                Row {
-                    TextButton(onClick = {
-                        clipboardManager.setText(AnnotatedString(bodyText))
-                    }) {
-                        Text("Copy")
-                    }
-                    TextButton(onClick = {
-                        var redacted = bodyText
-                        if (accessCode.isNotEmpty()) {
-                            redacted = redacted.replace(accessCode, "REDACTED")
-                        }
-                        if (serialNumber.isNotEmpty()) {
-                            redacted = redacted.replace(serialNumber, "REDACTED")
-                        }
-                        clipboardManager.setText(AnnotatedString(redacted))
-                    }) {
-                        Text("Copy Redacted")
-                    }
+                TextButton(onClick = {
+                    clipboardManager.setText(AnnotatedString(bodyText))
+                }) {
+                    Text(if (redactLogs) "Copy Redacted" else "Copy")
                 }
             },
             dismissButton = {

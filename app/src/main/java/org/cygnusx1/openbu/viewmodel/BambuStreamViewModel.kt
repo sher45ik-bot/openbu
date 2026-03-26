@@ -98,6 +98,9 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
     private val _autoSavePrinter = MutableStateFlow(true)
     val autoSavePrinter: StateFlow<Boolean> = _autoSavePrinter.asStateFlow()
 
+    private val _redactLogs = MutableStateFlow(true)
+    val redactLogs: StateFlow<Boolean> = _redactLogs.asStateFlow()
+
     private val _customBgColor = MutableStateFlow<Int?>(null)
     val customBgColor: StateFlow<Int?> = _customBgColor.asStateFlow()
 
@@ -253,6 +256,7 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
         _forceDarkMode.value = prefs.getBoolean("force_dark_mode", false)
         _debugLogging.value = prefs.getBoolean("debug_logging", false)
         _autoSavePrinter.value = prefs.getBoolean("auto_save_printer", true)
+        _redactLogs.value = prefs.getBoolean("redact_logs", true)
 
         // Migrate stale global RTSP keys
         if (prefs.contains("rtsp_enabled") || prefs.contains("rtsp_url")) {
@@ -352,6 +356,11 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
     fun setAutoSavePrinter(enabled: Boolean) {
         _autoSavePrinter.value = enabled
         prefs.edit().putBoolean("auto_save_printer", enabled).apply()
+    }
+
+    fun setRedactLogs(enabled: Boolean) {
+        _redactLogs.value = enabled
+        prefs.edit().putBoolean("redact_logs", enabled).apply()
     }
 
     private fun saveCredentials(ip: String, accessCode: String, serialNumber: String) {
