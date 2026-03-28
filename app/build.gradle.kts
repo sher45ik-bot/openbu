@@ -112,5 +112,6 @@ dependencies {
     implementation("androidx.media3:media3-ui:1.10.0-rc03")
 
     implementation("org.videolan.android:libvlc-all:3.6.5")
+    implementation("org.conscrypt:conscrypt-android:2.5.3")
     debugImplementation("androidx.compose.ui:ui-tooling")
 }

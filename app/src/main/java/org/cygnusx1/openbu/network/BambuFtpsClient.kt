@@ -3,6 +3,8 @@ package org.cygnusx1.openbu.network
 import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import org.conscrypt.Conscrypt
+import org.conscrypt.SSLClientSessionCache
 import java.io.BufferedReader
 import java.io.IOException
 import java.io.InputStream
@@ -12,6 +14,7 @@ import java.net.InetSocketAddress
 import java.net.Socket
 import java.security.cert.X509Certificate
 import javax.net.ssl.SSLContext
+import javax.net.ssl.SSLSession
 import javax.net.ssl.SSLSocket
 import javax.net.ssl.TrustManager
 import javax.net.ssl.X509TrustManager
@@ -26,6 +29,19 @@ class BambuFtpsClient(
     private var writer: OutputStream? = null
     @Volatile
     private var activeDataSocket: SSLSocket? = null
+    private var dataUseSsl = false
+
+    // Bridges the control channel's TLS session to data channels so vsFTPd accepts
+    // the connection when require_ssl_reuse=YES (P2S/X1C). Returns the same session
+    // bytes regardless of host:port, since Conscrypt keys its cache by host:port and
+    // the data channel uses an ephemeral PASV port that would otherwise miss.
+    private val sessionCache = object : SSLClientSessionCache {
+        @Volatile private var sessionData: ByteArray? = null
+        override fun getSessionData(host: String, port: Int): ByteArray? = sessionData
+        override fun putSessionData(session: SSLSession, sessionData: ByteArray?) {
+            if (sessionData != null) this.sessionData = sessionData
+        }
+    }
 
     private val sslContext: SSLContext by lazy {
         val trustAllCerts = arrayOf<TrustManager>(object : X509TrustManager {
@@ -33,9 +49,10 @@ class BambuFtpsClient(
             override fun checkServerTrusted(chain: Array<out X509Certificate>?, authType: String?) {}
             override fun getAcceptedIssuers(): Array<X509Certificate> = emptyArray()
         })
-        SSLContext.getInstance("TLS").apply {
-            init(null, trustAllCerts, java.security.SecureRandom())
-        }
+        val ctx = SSLContext.getInstance("TLS", Conscrypt.newProvider())
+        ctx.init(null, trustAllCerts, java.security.SecureRandom())
+        Conscrypt.setClientSessionCache(ctx, sessionCache)
+        ctx
     }
 
     suspend fun connect(): Unit = withContext(Dispatchers.IO) {
@@ -46,6 +63,10 @@ class BambuFtpsClient(
         Log.d(TAG, "Creating SSL socket to $ip:$port")
         val ssl = sslContext.socketFactory.createSocket(rawSocket, ip, port, true) as SSLSocket
         ssl.sslParameters = ssl.sslParameters.apply { endpointIdentificationAlgorithm = null }
+        // TLS 1.2: session IDs are available immediately after handshake.
+        // TLS 1.3 delivers session tickets in post-handshake messages that may not
+        // arrive before the data channel opens, leaving the session cache empty.
+        ssl.enabledProtocols = arrayOf("TLSv1.2")
         Log.d(TAG, "Enabled protocols: ${ssl.enabledProtocols.joinToString()}")
         Log.d(TAG, "Enabled cipher suites: ${ssl.enabledCipherSuites.joinToString()}")
         Log.d(TAG, "Starting TLS handshake...")
@@ -71,6 +92,21 @@ class BambuFtpsClient(
             throw IOException("FTP USER failed: ${userResp.text}")
         }
 
+        // Enable TLS on data channels. Required even with implicit FTPS (port 990)
+        // because vsftpd only sets data_use_ssl via PROT P, not via implicit_ssl.
+        sendCommand("PBSZ 0")
+        readResponse()
+        sendCommand("PROT P")
+        val protResp = readResponse()
+        if (protResp.code == 200) {
+            dataUseSsl = true
+        } else {
+            Log.w(TAG, "PROT P not supported, falling back to PROT C (clear data channels)")
+            sendCommand("PROT C")
+            readResponse()
+            dataUseSsl = false
+        }
+
         sendCommand("TYPE I")
         readResponse()
     }
@@ -80,13 +116,15 @@ class BambuFtpsClient(
         val cwdResp = readResponse()
         if (cwdResp.code != 250) throw IOException("CWD failed: ${cwdResp.text}")
 
-        val dataSocket = openDataConnection()
+        val rawDataSocket = openDataConnection()
         sendCommand("LIST")
         val listResp = readResponse()
         if (listResp.code != 150 && listResp.code != 125) {
-            dataSocket.close()
+            rawDataSocket.close()
             throw IOException("LIST failed: ${listResp.text}")
         }
+
+        val dataSocket = maybeUpgradeToSsl(rawDataSocket)
 
         val dataReader = BufferedReader(InputStreamReader(dataSocket.inputStream))
         val lines = mutableListOf<String>()
@@ -108,16 +146,17 @@ class BambuFtpsClient(
         totalSize: Long = -1,
         onProgress: ((bytesRead: Long, totalBytes: Long) -> Unit)? = null,
     ): Unit = withContext(Dispatchers.IO) {
-        val dataSocket = openDataConnection()
-        activeDataSocket = dataSocket
-        try {
-            sendCommand("RETR $remotePath")
-            val resp = readResponse()
-            if (resp.code != 150 && resp.code != 125) {
-                dataSocket.close()
-                throw IOException("RETR failed: ${resp.text}")
-            }
+        val rawDataSocket = openDataConnection()
+        sendCommand("RETR $remotePath")
+        val resp = readResponse()
+        if (resp.code != 150 && resp.code != 125) {
+            rawDataSocket.close()
+            throw IOException("RETR failed: ${resp.text}")
+        }
 
+        val dataSocket = maybeUpgradeToSsl(rawDataSocket)
+        activeDataSocket = dataSocket as? SSLSocket
+        try {
             val input = dataSocket.inputStream
             val buf = ByteArray(8192)
             var totalRead = 0L
@@ -143,16 +182,17 @@ class BambuFtpsClient(
         totalSize: Long = -1,
         onProgress: ((bytesWritten: Long, totalBytes: Long) -> Unit)? = null,
     ): Unit = withContext(Dispatchers.IO) {
-        val dataSocket = openDataConnection()
-        activeDataSocket = dataSocket
-        try {
-            sendCommand("STOR $remotePath")
-            val resp = readResponse()
-            if (resp.code != 150 && resp.code != 125) {
-                dataSocket.close()
-                throw IOException("STOR failed: ${resp.text}")
-            }
+        val rawDataSocket = openDataConnection()
+        sendCommand("STOR $remotePath")
+        val resp = readResponse()
+        if (resp.code != 150 && resp.code != 125) {
+            rawDataSocket.close()
+            throw IOException("STOR failed: ${resp.text}")
+        }
 
+        val dataSocket = maybeUpgradeToSsl(rawDataSocket)
+        activeDataSocket = dataSocket as? SSLSocket
+        try {
             val output = dataSocket.outputStream
             val buf = ByteArray(8192)
             var written = 0L
@@ -234,7 +274,13 @@ class BambuFtpsClient(
         return FtpResponse(code, sb.toString())
     }
 
-    private fun openDataConnection(): SSLSocket {
+    /**
+     * Opens a PASV data connection and returns the raw TCP socket.
+     * SSL upgrade is deferred — vsFTPd doesn't call SSL_accept on the data channel
+     * until after it receives the FTP command (LIST/RETR/STOR) and sends the 150
+     * response. Upgrading before that deadlocks both sides.
+     */
+    private fun openDataConnection(): Socket {
         sendCommand("PASV")
         val resp = readResponse()
         if (resp.code != 227) throw IOException("PASV failed: ${resp.text}")
@@ -246,14 +292,32 @@ class BambuFtpsClient(
         val dataHost = "${parts[0]}.${parts[1]}.${parts[2]}.${parts[3]}"
         val dataPort = parts[4] * 256 + parts[5]
 
+        Log.d(TAG, "Data channel: connecting to $dataHost:$dataPort")
         val rawSocket = Socket()
         rawSocket.connect(InetSocketAddress(dataHost, dataPort), 10_000)
         rawSocket.soTimeout = 30_000
+        Log.d(TAG, "Data channel: TCP connected")
+        return rawSocket
+    }
 
-        // Implicit FTPS: data channel must also be SSL
-        val ssl = sslContext.socketFactory.createSocket(rawSocket, dataHost, dataPort, true) as SSLSocket
+    /**
+     * Wraps a raw data channel socket in TLS if PROT P was negotiated, resuming
+     * the control channel's session so vsFTPd's require_ssl_reuse check passes.
+     * Returns the raw socket unchanged if data channels are clear (PROT C).
+     */
+    private fun maybeUpgradeToSsl(rawSocket: Socket): Socket {
+        if (!dataUseSsl) return rawSocket
+        Log.d(TAG, "Data channel: starting SSL handshake")
+        val ssl = sslContext.socketFactory.createSocket(
+            rawSocket,
+            rawSocket.inetAddress.hostAddress,
+            rawSocket.port,
+            true
+        ) as SSLSocket
         ssl.sslParameters = ssl.sslParameters.apply { endpointIdentificationAlgorithm = null }
+        ssl.enabledProtocols = arrayOf("TLSv1.2")
         ssl.startHandshake()
+        Log.d(TAG, "Data channel: SSL handshake complete, reused=${ssl.session.id.contentEquals(controlSocket?.session?.id ?: byteArrayOf())}")
         return ssl
     }
 
