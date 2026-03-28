@@ -601,7 +601,14 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
             _skipObjectsError.value = "Printer must be actively printing (layer 2+) to skip objects"
             return
         }
-        val gcodeFile = status.gcodeFile
+        // When gcode_file is a plate reference (e.g. "plate_1.gcode"), use subtask_name instead
+        val gcodeFile = if (Regex("""plate_\d{1,2}\.gcode$""").containsMatchIn(status.gcodeFile)
+            && status.subtaskName.isNotEmpty()
+        ) {
+            "${status.subtaskName}.gcode.3mf"
+        } else {
+            status.gcodeFile
+        }
         if (!gcodeFile.endsWith(".gcode.3mf")) {
             _skipObjectsError.value = "Current print file is not a 3MF file"
             return

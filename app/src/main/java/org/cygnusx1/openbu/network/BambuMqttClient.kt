@@ -533,9 +533,10 @@ class BambuMqttClient(
         val current = _printerStatus.value
 
         val gcodeState = print.optString("gcode_state", "").ifEmpty { current.gcodeState }
+        val subtaskName = print.optString("subtask_name", "").ifEmpty { current.subtaskName }
         val gcodeFile = print.optString("gcode_file", "")
             .ifEmpty { current.gcodeFile }
-            .ifEmpty { print.optString("subtask_name", "") }
+            .ifEmpty { subtaskName }
         val mcPercent = if (print.has("mc_percent")) print.optInt("mc_percent") else current.mcPercent
         val layerNum = if (print.has("layer_num")) print.optInt("layer_num") else current.layerNum
         val totalLayerNum = if (print.has("total_layer_num")) print.optInt("total_layer_num") else current.totalLayerNum
@@ -650,6 +651,7 @@ class BambuMqttClient(
         val newStatus = PrinterStatus(
             gcodeState = gcodeState,
             gcodeFile = gcodeFile,
+            subtaskName = subtaskName,
             mcPercent = mcPercent,
             layerNum = layerNum,
             totalLayerNum = totalLayerNum,
