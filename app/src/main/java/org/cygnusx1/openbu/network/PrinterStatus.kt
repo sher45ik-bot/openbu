@@ -18,6 +18,7 @@ data class AmsUnit(
 data class PrinterStatus(
     val gcodeState: String = "IDLE",
     val gcodeFile: String = "",
+    val subtaskName: String = "",
     val mcPercent: Int = 0,
     val layerNum: Int = 0,
     val totalLayerNum: Int = 0,
