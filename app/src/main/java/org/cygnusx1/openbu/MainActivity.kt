@@ -409,6 +409,7 @@ class MainActivity : ComponentActivity() {
                         StreamScreen(
                             frame = frame,
                             fps = fps,
+                            isRelayed = currentProxyConfig != null,
                         )
                     }
                     connectionState == ConnectionState.Connected && showInternalRtspFullscreen && internalRtspUrl.isNotBlank() -> {
@@ -418,7 +419,7 @@ class MainActivity : ComponentActivity() {
                             showInternalRtspFullscreen = false
                             requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
                         }
-                        RtspStreamScreen(player = internalRtspPlayer)
+                        RtspStreamScreen(player = internalRtspPlayer, isRelayed = currentProxyConfig != null)
                     }
                     connectionState == ConnectionState.Connected && showRtspFullscreen && effectiveRtspUrl.isNotBlank() -> {
                         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
@@ -427,7 +428,7 @@ class MainActivity : ComponentActivity() {
                             showRtspFullscreen = false
                             requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
                         }
-                        RtspStreamScreen(player = rtspPlayer)
+                        RtspStreamScreen(player = rtspPlayer, isRelayed = currentProxyConfig != null)
                     }
                     connectionState == ConnectionState.Connected || hasLastConnectedPrinter -> {
                         if (connectionState == ConnectionState.Connected) {
@@ -506,6 +507,7 @@ class MainActivity : ComponentActivity() {
                             },
                             relayEnabled = dashRelayEnabled,
                             onRelayEnabledChanged = { viewModel.setRelayEnabled(it) },
+                            isRelayed = currentProxyConfig != null,
                         )
                     }
                     else -> {

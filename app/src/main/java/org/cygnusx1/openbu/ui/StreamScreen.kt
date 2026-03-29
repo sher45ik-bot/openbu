@@ -31,6 +31,7 @@ private const val MAX_SCALE = 5f
 fun StreamScreen(
     frame: Bitmap?,
     fps: Float,
+    isRelayed: Boolean = false,
 ) {
     val scale = remember { mutableFloatStateOf(1f) }
     val offsetX = remember { mutableFloatStateOf(0f) }
@@ -93,6 +94,24 @@ fun StreamScreen(
                 color = Color.White,
                 fontSize = 14.sp,
             )
+        }
+
+        // Relayed badge
+        if (isRelayed) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .statusBarsPadding()
+                    .padding(16.dp)
+                    .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
+                    .padding(horizontal = 12.dp, vertical = 6.dp),
+            ) {
+                Text(
+                    text = "Relayed",
+                    color = Color.White,
+                    fontSize = 14.sp,
+                )
+            }
         }
     }
 }

@@ -415,6 +415,11 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
     fun setRelayEnabled(enabled: Boolean) {
         _relayEnabled.value = enabled
         prefs.edit().putBoolean("relay_enabled", enabled).apply()
+        if (_connectionState.value == ConnectionState.Connected ||
+            _connectionState.value == ConnectionState.Connecting
+        ) {
+            reconnect()
+        }
     }
 
     fun setRelayHost(host: String) {
