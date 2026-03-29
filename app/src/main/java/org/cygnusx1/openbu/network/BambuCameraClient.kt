@@ -125,6 +125,7 @@ class BambuCameraClient(
     }
 
     private fun connect(): SSLSocket {
+        Log.d(TAG, "connect(): ip=$ip, port=$port, proxyConfig=${proxyConfig != null}")
         val trustAllCerts = arrayOf<TrustManager>(object : X509TrustManager {
             override fun checkClientTrusted(chain: Array<out X509Certificate>?, authType: String?) {}
             override fun checkServerTrusted(chain: Array<out X509Certificate>?, authType: String?) {}

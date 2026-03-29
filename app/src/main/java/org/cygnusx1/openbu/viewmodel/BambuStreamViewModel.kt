@@ -563,8 +563,8 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
                         }
                         _frame.value = null
                         _fps.value = 0f
-                        if (_isMqttConnected.value || ftpClient != null) {
-                            // MQTT or FTP still active — only retry the camera stream
+                        if (_isMqttConnected.value || ftpClient != null || mqttClient != null) {
+                            // MQTT connected, connecting, or FTP active — only retry the camera stream
                             scheduleMjpegRetry()
                         } else {
                             _errorMessage.value = "Connection to printer failed"
