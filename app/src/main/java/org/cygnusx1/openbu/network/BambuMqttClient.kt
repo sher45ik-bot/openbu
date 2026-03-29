@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import org.cygnusx1.openbu.data.FilamentProfile
+import org.cygnusx1.openbu.data.ProxyConfig
 import org.json.JSONArray
 import org.json.JSONObject
 import java.util.concurrent.atomic.AtomicInteger
@@ -37,6 +38,7 @@ class BambuMqttClient(
     private val ip: String,
     private val accessCode: String,
     private val serialNumber: String,
+    private val proxyConfig: ProxyConfig? = null,
 ) {
     private val _lightOn = MutableStateFlow<Boolean?>(null)
     val lightOn: StateFlow<Boolean?> = _lightOn.asStateFlow()
@@ -772,8 +774,11 @@ class BambuMqttClient(
         val sslContext = SSLContext.getInstance("TLS")
         sslContext.init(null, trustAllCerts, java.security.SecureRandom())
 
-        val rawSocket = Socket()
-        rawSocket.connect(InetSocketAddress(ip, 8883), 10_000)
+        val rawSocket = if (proxyConfig != null) {
+            Socks5TlsSocket.connect(proxyConfig, ip, 8883)
+        } else {
+            Socket().apply { connect(InetSocketAddress(ip, 8883), 10_000) }
+        }
         rawSocket.soTimeout = 90_000
         rawSocket.tcpNoDelay = true
 

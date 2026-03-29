@@ -32,6 +32,7 @@ import javax.net.ssl.SSLContext
 import javax.net.ssl.TrustManager
 import javax.net.ssl.X509TrustManager
 import org.cygnusx1.openbu.data.FilamentRepository
+import org.cygnusx1.openbu.network.Socks5TlsSslSocketFactory
 import org.cygnusx1.openbu.ui.ConnectionScreen
 import org.cygnusx1.openbu.ui.DashboardScreen
 import org.cygnusx1.openbu.ui.FileManagerScreen
@@ -119,6 +120,7 @@ class MainActivity : ComponentActivity() {
                 val noRouteToHost by viewModel.noRouteToHost.collectAsState()
                 val hasLastConnectedPrinter by viewModel.hasLastConnectedPrinter.collectAsState()
                 val rtspReconnectKey by viewModel.rtspReconnectKey.collectAsState()
+                val currentProxyConfig by viewModel.currentProxyConfig.collectAsState()
 
                 var showFullscreen by rememberSaveable { mutableStateOf(false) }
                 var showRtspFullscreen by rememberSaveable { mutableStateOf(false) }
@@ -168,8 +170,14 @@ class MainActivity : ComponentActivity() {
                                 })
                                 val sslContext = SSLContext.getInstance("TLS")
                                 sslContext.init(null, trustAll, java.security.SecureRandom())
-                                Log.d(tag, "Using trust-all SSLSocketFactory + forceRtpTcp")
-                                setSocketFactory(sslContext.socketFactory)
+                                val socketFactory = if (currentProxyConfig != null) {
+                                    Log.d(tag, "Using SOCKS5+TLS SSLSocketFactory + forceRtpTcp")
+                                    Socks5TlsSslSocketFactory(currentProxyConfig!!, sslContext)
+                                } else {
+                                    Log.d(tag, "Using trust-all SSLSocketFactory + forceRtpTcp")
+                                    sslContext.socketFactory
+                                }
+                                setSocketFactory(socketFactory)
                                 setForceUseRtpTcp(true)
                             }
                         }
@@ -327,6 +335,11 @@ class MainActivity : ComponentActivity() {
                         val mqttDataMessages by viewModel.mqttDataMessages.collectAsState()
                         val logcatText by viewModel.logcatText.collectAsState()
                         val accessCode by viewModel.connectedAccessCode.collectAsState()
+                        val relayEnabled by viewModel.relayEnabled.collectAsState()
+                        val relayHost by viewModel.relayHost.collectAsState()
+                        val relayPort by viewModel.relayPort.collectAsState()
+                        val relayUsername by viewModel.relayUsername.collectAsState()
+                        val relayPassword by viewModel.relayPassword.collectAsState()
                         SettingsScreen(
                             keepConnectionInBackground = keepConnectionInBackground,
                             onKeepConnectionChanged = { viewModel.setKeepConnectionInBackground(it) },
@@ -336,6 +349,16 @@ class MainActivity : ComponentActivity() {
                             onAutoSavePrinterChanged = { viewModel.setAutoSavePrinter(it) },
                             forceDarkMode = forceDarkMode,
                             onForceDarkModeChanged = { viewModel.setForceDarkMode(it) },
+                            relayEnabled = relayEnabled,
+                            onRelayEnabledChanged = { viewModel.setRelayEnabled(it) },
+                            relayHost = relayHost,
+                            onRelayHostChanged = { viewModel.setRelayHost(it) },
+                            relayPort = relayPort,
+                            onRelayPortChanged = { viewModel.setRelayPort(it) },
+                            relayUsername = relayUsername,
+                            onRelayUsernameChanged = { viewModel.setRelayUsername(it) },
+                            relayPassword = relayPassword,
+                            onRelayPasswordChanged = { viewModel.setRelayPassword(it) },
                             debugLogging = debugLogging,
                             onDebugLoggingChanged = { viewModel.setDebugLogging(it) },
                             redactLogs = redactLogs,
@@ -352,6 +375,8 @@ class MainActivity : ComponentActivity() {
                         requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
                         BackHandler { showPrinterSettings = false }
                         val customPrinterName by viewModel.customPrinterName.collectAsState()
+                        val printerRelayEnabled by viewModel.relayEnabled.collectAsState()
+                        val printerRelayOverride by viewModel.relayOverride.collectAsState()
                         PrinterSettingsScreen(
                             customPrinterName = customPrinterName,
                             onCustomPrinterNameChanged = { viewModel.setCustomPrinterName(it) },
@@ -361,6 +386,9 @@ class MainActivity : ComponentActivity() {
                             onRtspUrlChanged = { viewModel.setRtspUrl(it) },
                             customBgColor = customBgColor,
                             onBgColorChanged = { viewModel.setCustomBgColor(it) },
+                            relayEnabled = printerRelayEnabled,
+                            relayOverride = printerRelayOverride,
+                            onRelayOverrideChanged = { viewModel.setRelayOverride(it) },
                             isSaved = savedPrinters.any { it.serialNumber == connectedSerialNumber },
                             onDeletePrinter = { viewModel.deleteSavedPrinter(connectedSerialNumber) },
                             onBack = { showPrinterSettings = false },
@@ -423,6 +451,7 @@ class MainActivity : ComponentActivity() {
                                 ?: savedPrinters.firstOrNull { it.serialNumber == connectedSerialNumber }?.deviceName
                                 ?: ""
                         }
+                        val dashRelayEnabled by viewModel.relayEnabled.collectAsState()
                         DashboardScreen(
                             frame = frame,
                             fps = fps,
@@ -470,6 +499,8 @@ class MainActivity : ComponentActivity() {
                             onSetFilament = { amsId, trayId, profile, colorHex ->
                                 viewModel.setFilament(amsId, trayId, profile, colorHex)
                             },
+                            relayEnabled = dashRelayEnabled,
+                            onRelayEnabledChanged = { viewModel.setRelayEnabled(it) },
                         )
                     }
                     else -> {

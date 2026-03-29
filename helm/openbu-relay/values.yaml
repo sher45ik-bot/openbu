@@ -1,0 +1,25 @@
+image:
+  repository: gogost/gost
+  tag: latest
+  pullPolicy: IfNotPresent
+
+service:
+  type: LoadBalancer
+  port: 1080
+
+auth:
+  # Override via --set or external secret
+  username: ""
+  password: ""
+
+tls:
+  # Name of a Secret created by cert-manager (must contain tls.crt and tls.key)
+  certificateSecretName: ""
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 32Mi
+  limits:
+    cpu: 500m
+    memory: 128Mi

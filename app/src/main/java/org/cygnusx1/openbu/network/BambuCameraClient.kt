@@ -18,6 +18,7 @@ import javax.net.ssl.SSLSocket
 import javax.net.ssl.TrustManager
 import javax.net.ssl.X509TrustManager
 import android.util.Log
+import org.cygnusx1.openbu.data.ProxyConfig
 import kotlin.coroutines.coroutineContext
 
 private const val TAG = "BambuCamera"
@@ -33,6 +34,7 @@ class BambuCameraClient(
     private val port: Int = DEFAULT_MJPEG_PORT,
     private val connectTimeoutMs: Int = 10_000,
     private val readTimeoutMs: Int = 30_000,
+    private val proxyConfig: ProxyConfig? = null,
 ) {
     @Volatile
     var debugLogging: Boolean = false
@@ -132,8 +134,13 @@ class BambuCameraClient(
         val sslContext = SSLContext.getInstance("TLS")
         sslContext.init(null, trustAllCerts, java.security.SecureRandom())
 
-        val rawSocket = Socket()
-        rawSocket.connect(InetSocketAddress(ip, port), connectTimeoutMs)
+        val rawSocket = if (proxyConfig != null) {
+            Socks5TlsSocket.connect(proxyConfig, ip, port, connectTimeoutMs)
+        } else {
+            Socket().apply {
+                connect(InetSocketAddress(ip, port), connectTimeoutMs)
+            }
+        }
         rawSocket.soTimeout = readTimeoutMs
 
         val sslSocket = sslContext.socketFactory.createSocket(

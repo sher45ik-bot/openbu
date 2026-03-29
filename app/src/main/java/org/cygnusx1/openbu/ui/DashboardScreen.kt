@@ -151,6 +151,8 @@ fun DashboardScreen(
     onPrinterActionCommand: (String) -> Unit,
     filaments: List<FilamentProfile> = emptyList(),
     onSetFilament: (Int, Int, FilamentProfile, String) -> Unit = { _, _, _, _ -> },
+    relayEnabled: Boolean = false,
+    onRelayEnabledChanged: (Boolean) -> Unit = {},
 ) {
     lowResolution = LocalConfiguration.current.densityDpi >= 420
     val series = printerSeriesFromSerial(serialNumber)
@@ -358,6 +360,23 @@ fun DashboardScreen(
                     icon = { Icon(Icons.Filled.Settings, contentDescription = null) },
                     modifier = Modifier.padding(horizontal = 12.dp),
                 )
+                HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 28.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = "Remote Relay",
+                        style = MaterialTheme.typography.bodyLarge,
+                        modifier = Modifier.weight(1f),
+                    )
+                    Switch(
+                        checked = relayEnabled,
+                        onCheckedChange = onRelayEnabledChanged,
+                    )
+                }
             }
         },
     ) {

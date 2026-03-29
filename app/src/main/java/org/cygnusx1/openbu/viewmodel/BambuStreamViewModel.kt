@@ -10,6 +10,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import org.cygnusx1.openbu.data.FilamentProfile
+import org.cygnusx1.openbu.data.ProxyConfig
 import org.cygnusx1.openbu.data.printerSeriesFromSerial
 import org.cygnusx1.openbu.network.BambuCameraClient
 import org.cygnusx1.openbu.network.BambuFtpsClient
@@ -27,8 +28,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import android.util.Log
 import java.io.File
@@ -109,6 +113,54 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
 
     private val _connectedIp = MutableStateFlow("")
     private val _connectedAccessCode = MutableStateFlow("")
+
+    // Global relay settings
+    private val _relayEnabled = MutableStateFlow(false)
+    val relayEnabled: StateFlow<Boolean> = _relayEnabled.asStateFlow()
+
+    private val _relayHost = MutableStateFlow("")
+    val relayHost: StateFlow<String> = _relayHost.asStateFlow()
+
+    private val _relayPort = MutableStateFlow("1080")
+    val relayPort: StateFlow<String> = _relayPort.asStateFlow()
+
+    private val _relayUsername = MutableStateFlow("")
+    val relayUsername: StateFlow<String> = _relayUsername.asStateFlow()
+
+    private val _relayPassword = MutableStateFlow("")
+    val relayPassword: StateFlow<String> = _relayPassword.asStateFlow()
+
+    // Per-printer relay override: true = skip relay for this printer
+    private val _relayOverride = MutableStateFlow(false)
+    val relayOverride: StateFlow<Boolean> = _relayOverride.asStateFlow()
+
+    /** Returns the effective ProxyConfig for the current connection, or null if relay is off/overridden. */
+    private fun effectiveProxyConfig(serial: String): ProxyConfig? {
+        if (!_relayEnabled.value) return null
+        // Per-printer override disables relay for this printer
+        if (prefs.getBoolean("relay_override_$serial", false)) return null
+        val host = _relayHost.value
+        val port = _relayPort.value.toIntOrNull() ?: return null
+        val user = _relayUsername.value
+        val pass = _relayPassword.value
+        if (host.isBlank() || user.isBlank() || pass.isBlank()) return null
+        return ProxyConfig(host, port, user, pass)
+    }
+
+    /** Exposed for RTSP player in MainActivity — reacts to relay setting and serial changes. */
+    val currentProxyConfig: StateFlow<ProxyConfig?> = combine(
+        _relayEnabled, _relayHost, _relayPort, _relayUsername, _relayPassword,
+        _relayOverride, _connectedSerialNumber,
+    ) { values ->
+        val enabled = values[0] as Boolean
+        val host = values[1] as String
+        val port = (values[2] as String).toIntOrNull()
+        val user = values[3] as String
+        val pass = values[4] as String
+        val override = values[5] as Boolean
+        if (!enabled || override || host.isBlank() || port == null || user.isBlank() || pass.isBlank()) null
+        else ProxyConfig(host, port, user, pass)
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     private val _savedPrinters = MutableStateFlow<List<SavedPrinter>>(emptyList())
     val savedPrinters: StateFlow<List<SavedPrinter>> = _savedPrinters.asStateFlow()
@@ -257,6 +309,11 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
         _debugLogging.value = prefs.getBoolean("debug_logging", false)
         _autoSavePrinter.value = prefs.getBoolean("auto_save_printer", true)
         _redactLogs.value = prefs.getBoolean("redact_logs", true)
+        _relayEnabled.value = prefs.getBoolean("relay_enabled", false)
+        _relayHost.value = prefs.getString("relay_host", "") ?: ""
+        _relayPort.value = prefs.getString("relay_port", "1080") ?: "1080"
+        _relayUsername.value = prefs.getString("relay_username", "") ?: ""
+        _relayPassword.value = prefs.getString("relay_password", "") ?: ""
 
         // Migrate stale global RTSP keys
         if (prefs.contains("rtsp_enabled") || prefs.contains("rtsp_url")) {
@@ -339,6 +396,7 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
         _rtspUrl.value = prefs.getString("rtsp_url_$serial", "") ?: ""
         _customBgColor.value = if (prefs.contains("bg_color_$serial")) prefs.getInt("bg_color_$serial", 0) else null
         _customPrinterName.value = prefs.getString("custom_name_$serial", "") ?: ""
+        _relayOverride.value = prefs.getBoolean("relay_override_$serial", false)
     }
 
     fun setForceDarkMode(enabled: Boolean) {
@@ -361,6 +419,39 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
     fun setRedactLogs(enabled: Boolean) {
         _redactLogs.value = enabled
         prefs.edit().putBoolean("redact_logs", enabled).apply()
+    }
+
+    fun setRelayEnabled(enabled: Boolean) {
+        _relayEnabled.value = enabled
+        prefs.edit().putBoolean("relay_enabled", enabled).apply()
+    }
+
+    fun setRelayHost(host: String) {
+        _relayHost.value = host
+        prefs.edit().putString("relay_host", host).apply()
+    }
+
+    fun setRelayPort(port: String) {
+        _relayPort.value = port
+        prefs.edit().putString("relay_port", port).apply()
+    }
+
+    fun setRelayUsername(username: String) {
+        _relayUsername.value = username
+        prefs.edit().putString("relay_username", username).apply()
+    }
+
+    fun setRelayPassword(password: String) {
+        _relayPassword.value = password
+        prefs.edit().putString("relay_password", password).apply()
+    }
+
+    fun setRelayOverride(disabled: Boolean) {
+        _relayOverride.value = disabled
+        val serial = _connectedSerialNumber.value
+        if (serial.isNotEmpty()) {
+            prefs.edit().putBoolean("relay_override_$serial", disabled).apply()
+        }
     }
 
     private fun saveCredentials(ip: String, accessCode: String, serialNumber: String) {
@@ -408,6 +499,7 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
         _connectedAccessCode.value = accessCode
         _connectedSerialNumber.value = serialNumber
         loadPerPrinterSettings(serialNumber)
+        val proxyConfig = effectiveProxyConfig(serialNumber)
         _connectionState.value = ConnectionState.Connecting
         _errorMessage.value = null
 
@@ -419,7 +511,8 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
 
         if (usesMjpegCamera(serialNumber)) {
             _showMainStream.value = prefs.getBoolean("show_main_stream", true)
-            val bambuClient = BambuCameraClient(ip, accessCode)
+            val bambuClient = BambuCameraClient(ip, accessCode, proxyConfig = proxyConfig)
+
             bambuClient.debugLogging = _debugLogging.value
             client = bambuClient
 
@@ -489,7 +582,7 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
         }
 
         // Start MQTT in separate coroutine (non-fatal)
-        val mqtt = BambuMqttClient(ip, accessCode, serialNumber)
+        val mqtt = BambuMqttClient(ip, accessCode, serialNumber, proxyConfig = proxyConfig)
         mqtt.debugLogging = _debugLogging.value
         mqttClient = mqtt
         mqtt.connect(viewModelScope)
@@ -626,7 +719,7 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
         viewModelScope.launch(Dispatchers.IO) {
             var ftpClient: BambuFtpsClient? = null
             try {
-                ftpClient = BambuFtpsClient(ip, code)
+                ftpClient = BambuFtpsClient(ip, code, proxyConfig = effectiveProxyConfig(_connectedSerialNumber.value))
                 ftpClient.connect()
 
                 // List root to get remote file size and timestamp
@@ -1012,7 +1105,7 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
 
         viewModelScope.launch {
             try {
-                val client = BambuFtpsClient(ip, code)
+                val client = BambuFtpsClient(ip, code, proxyConfig = effectiveProxyConfig(_connectedSerialNumber.value))
                 client.connect()
                 ftpClient = client
                 val files = client.listDirectory("/")
@@ -1246,7 +1339,7 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
 
         viewModelScope.launch {
             try {
-                val client = BambuFtpsClient(ip, code)
+                val client = BambuFtpsClient(ip, code, proxyConfig = effectiveProxyConfig(_connectedSerialNumber.value))
                 client.connect()
                 timelapseFtpClient = client
                 val files = client.listDirectory("/timelapse")
@@ -1286,7 +1379,7 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
 
         timelapseThumbnailJob = viewModelScope.launch(Dispatchers.IO) {
             val thumbClient = try {
-                BambuFtpsClient(_connectedIp.value, _connectedAccessCode.value).also { it.connect() }
+                BambuFtpsClient(_connectedIp.value, _connectedAccessCode.value, proxyConfig = effectiveProxyConfig(_connectedSerialNumber.value)).also { it.connect() }
             } catch (_: Exception) {
                 return@launch
             }
@@ -1354,7 +1447,7 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
 
         timelapseDownloadJob = viewModelScope.launch {
             try {
-                val dlClient = BambuFtpsClient(_connectedIp.value, _connectedAccessCode.value)
+                val dlClient = BambuFtpsClient(_connectedIp.value, _connectedAccessCode.value, proxyConfig = effectiveProxyConfig(_connectedSerialNumber.value))
                 timelapseDownloadClient = dlClient
                 dlClient.connect()
 

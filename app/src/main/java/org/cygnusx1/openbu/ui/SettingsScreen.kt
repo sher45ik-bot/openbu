@@ -19,6 +19,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -64,6 +65,16 @@ fun SettingsScreen(
     onAutoSavePrinterChanged: (Boolean) -> Unit,
     forceDarkMode: Boolean,
     onForceDarkModeChanged: (Boolean) -> Unit,
+    relayEnabled: Boolean,
+    onRelayEnabledChanged: (Boolean) -> Unit,
+    relayHost: String,
+    onRelayHostChanged: (String) -> Unit,
+    relayPort: String,
+    onRelayPortChanged: (String) -> Unit,
+    relayUsername: String,
+    onRelayUsernameChanged: (String) -> Unit,
+    relayPassword: String,
+    onRelayPasswordChanged: (String) -> Unit,
     debugLogging: Boolean,
     onDebugLoggingChanged: (Boolean) -> Unit,
     redactLogs: Boolean,
@@ -124,7 +135,7 @@ fun SettingsScreen(
             },
         )
 
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(modifier = Modifier.padding(16.dp).verticalScroll(rememberScrollState())) {
             // Persistent connection
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -226,6 +237,86 @@ fun SettingsScreen(
                     onCheckedChange = onForceDarkModeChanged,
                 )
             }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Text(
+                text = "Remote Relay",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onBackground,
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Relay enabled toggle
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Enable relay",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onBackground,
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = "Route all printer traffic through a SOCKS5 relay",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Switch(
+                    checked = relayEnabled,
+                    onCheckedChange = onRelayEnabledChanged,
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            OutlinedTextField(
+                value = relayHost,
+                onValueChange = onRelayHostChanged,
+                label = { Text("Relay hostname") },
+                placeholder = { Text("relay.example.com") },
+                singleLine = true,
+                enabled = relayEnabled,
+                modifier = Modifier.fillMaxWidth(),
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            OutlinedTextField(
+                value = relayPort,
+                onValueChange = onRelayPortChanged,
+                label = { Text("Relay port") },
+                placeholder = { Text("1080") },
+                singleLine = true,
+                enabled = relayEnabled,
+                modifier = Modifier.fillMaxWidth(),
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            OutlinedTextField(
+                value = relayUsername,
+                onValueChange = onRelayUsernameChanged,
+                label = { Text("Relay username") },
+                singleLine = true,
+                enabled = relayEnabled,
+                modifier = Modifier.fillMaxWidth(),
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            OutlinedTextField(
+                value = relayPassword,
+                onValueChange = onRelayPasswordChanged,
+                label = { Text("Relay password") },
+                singleLine = true,
+                enabled = relayEnabled,
+                modifier = Modifier.fillMaxWidth(),
+            )
 
             Spacer(modifier = Modifier.height(24.dp))
 
