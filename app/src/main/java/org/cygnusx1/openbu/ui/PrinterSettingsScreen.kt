@@ -77,6 +77,9 @@ fun PrinterSettingsScreen(
     onRtspUrlChanged: (String) -> Unit,
     customBgColor: Int?,
     onBgColorChanged: (Int?) -> Unit,
+    relayEnabled: Boolean,
+    relayOverride: Boolean,
+    onRelayOverrideChanged: (Boolean) -> Unit,
     isSaved: Boolean,
     onDeletePrinter: () -> Unit,
     onBack: () -> Unit,
@@ -247,6 +250,33 @@ fun PrinterSettingsScreen(
                     Button(onClick = { showBgColorPicker = true }) {
                         Text("Pick")
                     }
+                }
+            }
+
+            if (relayEnabled) {
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Skip relay for this printer",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onBackground,
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = "Connect directly to this printer instead of through the relay",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Switch(
+                        checked = relayOverride,
+                        onCheckedChange = onRelayOverrideChanged,
+                    )
                 }
             }
 

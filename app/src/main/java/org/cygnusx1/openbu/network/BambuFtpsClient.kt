@@ -4,6 +4,7 @@ import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.conscrypt.Conscrypt
+
 import org.conscrypt.SSLClientSessionCache
 import java.io.BufferedReader
 import java.io.IOException
@@ -23,6 +24,7 @@ class BambuFtpsClient(
     private val ip: String,
     private val accessCode: String,
     private val port: Int = 990,
+    private val rawSocketFactory: ((String, Int) -> Socket)? = null,
 ) {
     private var controlSocket: SSLSocket? = null
     private var reader: BufferedReader? = null
@@ -56,8 +58,11 @@ class BambuFtpsClient(
     }
 
     suspend fun connect(): Unit = withContext(Dispatchers.IO) {
-        val rawSocket = Socket()
-        rawSocket.connect(InetSocketAddress(ip, port), 10_000)
+        val rawSocket = if (rawSocketFactory != null) {
+            rawSocketFactory.invoke(ip, port)
+        } else {
+            Socket().apply { connect(InetSocketAddress(ip, port), 10_000) }
+        }
         rawSocket.soTimeout = 30_000
 
         Log.d(TAG, "Creating SSL socket to $ip:$port")
@@ -293,8 +298,11 @@ class BambuFtpsClient(
         val dataPort = parts[4] * 256 + parts[5]
 
         Log.d(TAG, "Data channel: connecting to $dataHost:$dataPort")
-        val rawSocket = Socket()
-        rawSocket.connect(InetSocketAddress(dataHost, dataPort), 10_000)
+        val rawSocket = if (rawSocketFactory != null) {
+            rawSocketFactory.invoke(dataHost, dataPort)
+        } else {
+            Socket().apply { connect(InetSocketAddress(dataHost, dataPort), 10_000) }
+        }
         rawSocket.soTimeout = 30_000
         Log.d(TAG, "Data channel: TCP connected")
         return rawSocket

@@ -37,6 +37,7 @@ class BambuMqttClient(
     private val ip: String,
     private val accessCode: String,
     private val serialNumber: String,
+    private val rawSocketFactory: ((String, Int) -> Socket)? = null,
 ) {
     private val _lightOn = MutableStateFlow<Boolean?>(null)
     val lightOn: StateFlow<Boolean?> = _lightOn.asStateFlow()
@@ -772,8 +773,11 @@ class BambuMqttClient(
         val sslContext = SSLContext.getInstance("TLS")
         sslContext.init(null, trustAllCerts, java.security.SecureRandom())
 
-        val rawSocket = Socket()
-        rawSocket.connect(InetSocketAddress(ip, 8883), 10_000)
+        val rawSocket = if (rawSocketFactory != null) {
+            rawSocketFactory.invoke(ip, 8883)
+        } else {
+            Socket().apply { connect(InetSocketAddress(ip, 8883), 10_000) }
+        }
         rawSocket.soTimeout = 90_000
         rawSocket.tcpNoDelay = true
 

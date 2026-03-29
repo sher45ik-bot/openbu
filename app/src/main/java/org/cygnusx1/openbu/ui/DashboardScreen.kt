@@ -151,6 +151,9 @@ fun DashboardScreen(
     onPrinterActionCommand: (String) -> Unit,
     filaments: List<FilamentProfile> = emptyList(),
     onSetFilament: (Int, Int, FilamentProfile, String) -> Unit = { _, _, _, _ -> },
+    relayEnabled: Boolean = false,
+    onRelayEnabledChanged: (Boolean) -> Unit = {},
+    isRelayed: Boolean = false,
 ) {
     lowResolution = LocalConfiguration.current.densityDpi >= 420
     val series = printerSeriesFromSerial(serialNumber)
@@ -358,6 +361,23 @@ fun DashboardScreen(
                     icon = { Icon(Icons.Filled.Settings, contentDescription = null) },
                     modifier = Modifier.padding(horizontal = 12.dp),
                 )
+                HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 28.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = "Remote Relay",
+                        style = MaterialTheme.typography.bodyLarge,
+                        modifier = Modifier.weight(1f),
+                    )
+                    Switch(
+                        checked = relayEnabled,
+                        onCheckedChange = onRelayEnabledChanged,
+                    )
+                }
             }
         },
     ) {
@@ -482,6 +502,23 @@ fun DashboardScreen(
                             fontSize = 12.sp,
                         )
                     }
+
+                    // Relayed badge
+                    if (isRelayed) {
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .padding(8.dp)
+                                .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(6.dp))
+                                .padding(horizontal = 8.dp, vertical = 4.dp),
+                        ) {
+                            Text(
+                                text = "Relayed",
+                                color = Color.White,
+                                fontSize = 12.sp,
+                            )
+                        }
+                    }
                 }
             }
 
@@ -490,13 +527,13 @@ fun DashboardScreen(
 
         // Internal RTSP stream (non-P1 printer built-in camera)
         if (showMainStream && internalRtspPlayer != null) {
-            RtspStreamCard(player = internalRtspPlayer, onClick = onOpenInternalRtspFullscreen)
+            RtspStreamCard(player = internalRtspPlayer, onClick = onOpenInternalRtspFullscreen, isRelayed = isRelayed)
             Spacer(modifier = Modifier.height(VerticalCardPadding))
         }
 
         // External RTSP stream
         if (rtspPlayer != null) {
-            RtspStreamCard(player = rtspPlayer, onClick = onOpenRtspFullscreen)
+            RtspStreamCard(player = rtspPlayer, onClick = onOpenRtspFullscreen, isRelayed = isRelayed)
             Spacer(modifier = Modifier.height(VerticalCardPadding))
         }
 
@@ -1017,24 +1054,42 @@ private fun ExternalSpoolCard(vtTray: AmsTray?, modifier: Modifier = Modifier, o
 }
 
 @Composable
-private fun RtspStreamCard(player: ExoPlayer, onClick: () -> Unit) {
+private fun RtspStreamCard(player: ExoPlayer, onClick: () -> Unit, isRelayed: Boolean = false) {
     Card(
         modifier = Modifier.fillMaxWidth().clickable { onClick() },
         shape = RoundedCornerShape(12.dp),
     ) {
-        AndroidView(
-            factory = { ctx ->
-                PlayerView(ctx).apply {
-                    this.player = player
-                    useController = false
+        Box {
+            AndroidView(
+                factory = { ctx ->
+                    PlayerView(ctx).apply {
+                        this.player = player
+                        useController = false
+                    }
+                },
+                update = { view -> view.player = player },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(16f / 9f)
+                    .background(Color.Black),
+            )
+
+            if (isRelayed) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(8.dp)
+                        .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(6.dp))
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                ) {
+                    Text(
+                        text = "Relayed",
+                        color = Color.White,
+                        fontSize = 12.sp,
+                    )
                 }
-            },
-            update = { view -> view.player = player },
-            modifier = Modifier
-                .fillMaxWidth()
-                .aspectRatio(16f / 9f)
-                .background(Color.Black),
-        )
+            }
+        }
     }
 }
 

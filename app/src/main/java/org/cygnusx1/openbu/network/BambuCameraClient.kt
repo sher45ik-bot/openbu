@@ -33,6 +33,7 @@ class BambuCameraClient(
     private val port: Int = DEFAULT_MJPEG_PORT,
     private val connectTimeoutMs: Int = 10_000,
     private val readTimeoutMs: Int = 30_000,
+    private val rawSocketFactory: (() -> Socket)? = null,
 ) {
     @Volatile
     var debugLogging: Boolean = false
@@ -132,8 +133,11 @@ class BambuCameraClient(
         val sslContext = SSLContext.getInstance("TLS")
         sslContext.init(null, trustAllCerts, java.security.SecureRandom())
 
-        val rawSocket = Socket()
-        rawSocket.connect(InetSocketAddress(ip, port), connectTimeoutMs)
+        val rawSocket = if (rawSocketFactory != null) {
+            rawSocketFactory.invoke()
+        } else {
+            Socket().also { it.connect(InetSocketAddress(ip, port), connectTimeoutMs) }
+        }
         rawSocket.soTimeout = readTimeoutMs
 
         val sslSocket = sslContext.socketFactory.createSocket(

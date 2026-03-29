@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}
+  labels:
+    app: {{ .Release.Name }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}
+    spec:
+      containers:
+        - name: gost
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            - name: GOST_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-auth
+                  key: username
+            - name: GOST_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-auth
+                  key: password
+          args:
+            {{- if .Values.tls.certificateSecretName }}
+            - "-L=socks5+tls://$(GOST_USERNAME):$(GOST_PASSWORD)@:{{ .Values.service.port }}?certFile=/certs/tls.crt&keyFile=/certs/tls.key"
+            {{- else }}
+            - "-L=socks5://$(GOST_USERNAME):$(GOST_PASSWORD)@:{{ .Values.service.port }}"
+            {{- end }}
+          ports:
+            - containerPort: {{ .Values.service.port }}
+              protocol: TCP
+          {{- if .Values.tls.certificateSecretName }}
+          volumeMounts:
+            - name: tls-certs
+              mountPath: /certs
+              readOnly: true
+          {{- end }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      {{- if .Values.tls.certificateSecretName }}
+      volumes:
+        - name: tls-certs
+          secret:
+            secretName: {{ .Values.tls.certificateSecretName }}
+      {{- end }}

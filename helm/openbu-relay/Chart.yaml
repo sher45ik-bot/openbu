@@ -1,0 +1,6 @@
+apiVersion: v2
+name: openbu-relay
+description: GOST SOCKS5+TLS proxy for remote access to Bambu Lab printers
+type: application
+version: 0.1.0
+appVersion: "3.0.0"
