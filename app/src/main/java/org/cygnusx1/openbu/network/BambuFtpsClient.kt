@@ -4,7 +4,7 @@ import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.conscrypt.Conscrypt
-import org.cygnusx1.openbu.data.ProxyConfig
+
 import org.conscrypt.SSLClientSessionCache
 import java.io.BufferedReader
 import java.io.IOException
@@ -24,7 +24,7 @@ class BambuFtpsClient(
     private val ip: String,
     private val accessCode: String,
     private val port: Int = 990,
-    private val proxyConfig: ProxyConfig? = null,
+    private val rawSocketFactory: ((String, Int) -> Socket)? = null,
 ) {
     private var controlSocket: SSLSocket? = null
     private var reader: BufferedReader? = null
@@ -58,8 +58,8 @@ class BambuFtpsClient(
     }
 
     suspend fun connect(): Unit = withContext(Dispatchers.IO) {
-        val rawSocket = if (proxyConfig != null) {
-            Socks5TlsSocket.connect(proxyConfig, ip, port)
+        val rawSocket = if (rawSocketFactory != null) {
+            rawSocketFactory.invoke(ip, port)
         } else {
             Socket().apply { connect(InetSocketAddress(ip, port), 10_000) }
         }
@@ -298,8 +298,8 @@ class BambuFtpsClient(
         val dataPort = parts[4] * 256 + parts[5]
 
         Log.d(TAG, "Data channel: connecting to $dataHost:$dataPort")
-        val rawSocket = if (proxyConfig != null) {
-            Socks5TlsSocket.connect(proxyConfig, dataHost, dataPort)
+        val rawSocket = if (rawSocketFactory != null) {
+            rawSocketFactory.invoke(dataHost, dataPort)
         } else {
             Socket().apply { connect(InetSocketAddress(dataHost, dataPort), 10_000) }
         }

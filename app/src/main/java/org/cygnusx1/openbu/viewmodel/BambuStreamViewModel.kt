@@ -14,6 +14,7 @@ import org.cygnusx1.openbu.data.ProxyConfig
 import org.cygnusx1.openbu.data.printerSeriesFromSerial
 import org.cygnusx1.openbu.network.BambuCameraClient
 import org.cygnusx1.openbu.network.BambuFtpsClient
+import org.cygnusx1.openbu.network.Socks5TlsSocket
 import org.cygnusx1.openbu.network.BambuMqttClient
 import org.cygnusx1.openbu.network.BambuSsdpClient
 import org.cygnusx1.openbu.network.DiscoveredPrinter
@@ -28,11 +29,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import android.util.Log
 import java.io.File
@@ -147,20 +145,13 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
         return ProxyConfig(host, port, user, pass)
     }
 
-    /** Exposed for RTSP player in MainActivity — reacts to relay setting and serial changes. */
-    val currentProxyConfig: StateFlow<ProxyConfig?> = combine(
-        _relayEnabled, _relayHost, _relayPort, _relayUsername, _relayPassword,
-        _relayOverride, _connectedSerialNumber,
-    ) { values ->
-        val enabled = values[0] as Boolean
-        val host = values[1] as String
-        val port = (values[2] as String).toIntOrNull()
-        val user = values[3] as String
-        val pass = values[4] as String
-        val override = values[5] as Boolean
-        if (!enabled || override || host.isBlank() || port == null || user.isBlank() || pass.isBlank()) null
-        else ProxyConfig(host, port, user, pass)
-    }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
+    /** Creates a socket factory lambda that tunnels through SOCKS5, or null for direct. */
+    private fun proxySocketFactory(config: ProxyConfig?): ((String, Int) -> java.net.Socket)? =
+        if (config != null) { host, port -> Socks5TlsSocket.connect(config, host, port) } else null
+
+    /** Exposed for RTSP player in MainActivity. Updated when connect() is called. */
+    private val _currentProxyConfig = MutableStateFlow<ProxyConfig?>(null)
+    val currentProxyConfig: StateFlow<ProxyConfig?> = _currentProxyConfig.asStateFlow()
 
     private val _savedPrinters = MutableStateFlow<List<SavedPrinter>>(emptyList())
     val savedPrinters: StateFlow<List<SavedPrinter>> = _savedPrinters.asStateFlow()
@@ -500,6 +491,7 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
         _connectedSerialNumber.value = serialNumber
         loadPerPrinterSettings(serialNumber)
         val proxyConfig = effectiveProxyConfig(serialNumber)
+        _currentProxyConfig.value = proxyConfig
         _connectionState.value = ConnectionState.Connecting
         _errorMessage.value = null
 
@@ -511,7 +503,13 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
 
         if (usesMjpegCamera(serialNumber)) {
             _showMainStream.value = prefs.getBoolean("show_main_stream", true)
-            val bambuClient = BambuCameraClient(ip, accessCode, proxyConfig = proxyConfig)
+            val cameraSocketFactory = proxySocketFactory(proxyConfig)
+            val bambuClient = BambuCameraClient(
+                ip, accessCode,
+                rawSocketFactory = if (cameraSocketFactory != null) {
+                    { cameraSocketFactory(ip, 6000) }
+                } else null,
+            )
 
             bambuClient.debugLogging = _debugLogging.value
             client = bambuClient
@@ -582,7 +580,7 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
         }
 
         // Start MQTT in separate coroutine (non-fatal)
-        val mqtt = BambuMqttClient(ip, accessCode, serialNumber, proxyConfig = proxyConfig)
+        val mqtt = BambuMqttClient(ip, accessCode, serialNumber, rawSocketFactory = proxySocketFactory(proxyConfig))
         mqtt.debugLogging = _debugLogging.value
         mqttClient = mqtt
         mqtt.connect(viewModelScope)
@@ -719,7 +717,7 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
         viewModelScope.launch(Dispatchers.IO) {
             var ftpClient: BambuFtpsClient? = null
             try {
-                ftpClient = BambuFtpsClient(ip, code, proxyConfig = effectiveProxyConfig(_connectedSerialNumber.value))
+                ftpClient = BambuFtpsClient(ip, code, rawSocketFactory = proxySocketFactory(effectiveProxyConfig(_connectedSerialNumber.value)))
                 ftpClient.connect()
 
                 // List root to get remote file size and timestamp
@@ -877,7 +875,13 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
         mjpegRetryJob = viewModelScope.launch {
             delay(3000)
             if (userDisconnected) return@launch
-            val bambuClient = BambuCameraClient(ip, code)
+            val retrySocketFactory = proxySocketFactory(effectiveProxyConfig(_connectedSerialNumber.value))
+            val bambuClient = BambuCameraClient(
+                ip, code,
+                rawSocketFactory = if (retrySocketFactory != null) {
+                    { retrySocketFactory(ip, 6000) }
+                } else null,
+            )
             bambuClient.debugLogging = _debugLogging.value
             client = bambuClient
             try {
@@ -1105,7 +1109,7 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
 
         viewModelScope.launch {
             try {
-                val client = BambuFtpsClient(ip, code, proxyConfig = effectiveProxyConfig(_connectedSerialNumber.value))
+                val client = BambuFtpsClient(ip, code, rawSocketFactory = proxySocketFactory(effectiveProxyConfig(_connectedSerialNumber.value)))
                 client.connect()
                 ftpClient = client
                 val files = client.listDirectory("/")
@@ -1339,7 +1343,7 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
 
         viewModelScope.launch {
             try {
-                val client = BambuFtpsClient(ip, code, proxyConfig = effectiveProxyConfig(_connectedSerialNumber.value))
+                val client = BambuFtpsClient(ip, code, rawSocketFactory = proxySocketFactory(effectiveProxyConfig(_connectedSerialNumber.value)))
                 client.connect()
                 timelapseFtpClient = client
                 val files = client.listDirectory("/timelapse")
@@ -1379,7 +1383,7 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
 
         timelapseThumbnailJob = viewModelScope.launch(Dispatchers.IO) {
             val thumbClient = try {
-                BambuFtpsClient(_connectedIp.value, _connectedAccessCode.value, proxyConfig = effectiveProxyConfig(_connectedSerialNumber.value)).also { it.connect() }
+                BambuFtpsClient(_connectedIp.value, _connectedAccessCode.value, rawSocketFactory = proxySocketFactory(effectiveProxyConfig(_connectedSerialNumber.value))).also { it.connect() }
             } catch (_: Exception) {
                 return@launch
             }
@@ -1447,7 +1451,7 @@ class BambuStreamViewModel(application: Application) : AndroidViewModel(applicat
 
         timelapseDownloadJob = viewModelScope.launch {
             try {
-                val dlClient = BambuFtpsClient(_connectedIp.value, _connectedAccessCode.value, proxyConfig = effectiveProxyConfig(_connectedSerialNumber.value))
+                val dlClient = BambuFtpsClient(_connectedIp.value, _connectedAccessCode.value, rawSocketFactory = proxySocketFactory(effectiveProxyConfig(_connectedSerialNumber.value)))
                 timelapseDownloadClient = dlClient
                 dlClient.connect()
 
