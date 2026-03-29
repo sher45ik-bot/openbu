@@ -80,17 +80,39 @@ object Socks5TlsSocket {
             throw IOException("SOCKS5 authentication failed (status=${authResp[1]})")
         }
 
-        // 4. CONNECT request
-        val ipBytes = InetAddress.getByName(targetHost).address
-        val addrType: Byte = if (ipBytes.size == 4) 0x01 else 0x04 // IPv4 or IPv6
-        val connectPacket = ByteArray(6 + ipBytes.size)
-        connectPacket[0] = 0x05 // version
-        connectPacket[1] = 0x01 // CONNECT command
-        connectPacket[2] = 0x00 // reserved
-        connectPacket[3] = addrType
-        System.arraycopy(ipBytes, 0, connectPacket, 4, ipBytes.size)
-        connectPacket[4 + ipBytes.size] = (targetPort shr 8).toByte()
-        connectPacket[5 + ipBytes.size] = targetPort.toByte()
+        // 4. CONNECT request — send domain names as-is (type 0x03) so the proxy
+        //    resolves them, which handles internal DNS that the phone can't see.
+        //    Only use IPv4/IPv6 address types for IP literals.
+        val ipAddr = try { InetAddress.getByName(targetHost).takeIf {
+            // Only treat as IP if the input was already an IP literal (no DNS lookup)
+            targetHost == it.hostAddress
+        } } catch (_: Exception) { null }
+
+        val connectPacket: ByteArray
+        if (ipAddr != null) {
+            val ipBytes = ipAddr.address
+            val addrType: Byte = if (ipBytes.size == 4) 0x01 else 0x04
+            connectPacket = ByteArray(6 + ipBytes.size)
+            connectPacket[0] = 0x05
+            connectPacket[1] = 0x01
+            connectPacket[2] = 0x00
+            connectPacket[3] = addrType
+            System.arraycopy(ipBytes, 0, connectPacket, 4, ipBytes.size)
+            connectPacket[4 + ipBytes.size] = (targetPort shr 8).toByte()
+            connectPacket[5 + ipBytes.size] = targetPort.toByte()
+        } else {
+            // Domain name — let the proxy resolve it
+            val domainBytes = targetHost.toByteArray(Charsets.UTF_8)
+            connectPacket = ByteArray(7 + domainBytes.size)
+            connectPacket[0] = 0x05
+            connectPacket[1] = 0x01
+            connectPacket[2] = 0x00
+            connectPacket[3] = 0x03 // DOMAINNAME
+            connectPacket[4] = domainBytes.size.toByte()
+            System.arraycopy(domainBytes, 0, connectPacket, 5, domainBytes.size)
+            connectPacket[5 + domainBytes.size] = (targetPort shr 8).toByte()
+            connectPacket[6 + domainBytes.size] = targetPort.toByte()
+        }
         out.write(connectPacket)
         out.flush()
 

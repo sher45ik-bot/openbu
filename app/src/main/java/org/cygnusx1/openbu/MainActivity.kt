@@ -32,6 +32,7 @@ import javax.net.ssl.SSLContext
 import javax.net.ssl.TrustManager
 import javax.net.ssl.X509TrustManager
 import org.cygnusx1.openbu.data.FilamentRepository
+import org.cygnusx1.openbu.network.Socks5SocketFactory
 import org.cygnusx1.openbu.network.Socks5TlsSslSocketFactory
 import org.cygnusx1.openbu.ui.ConnectionScreen
 import org.cygnusx1.openbu.ui.DashboardScreen
@@ -178,6 +179,10 @@ class MainActivity : ComponentActivity() {
                                     sslContext.socketFactory
                                 }
                                 setSocketFactory(socketFactory)
+                                setForceUseRtpTcp(true)
+                            } else if (currentProxyConfig != null) {
+                                Log.d(tag, "Using SOCKS5 SocketFactory for plain RTSP + forceRtpTcp")
+                                setSocketFactory(Socks5SocketFactory(currentProxyConfig!!))
                                 setForceUseRtpTcp(true)
                             }
                         }
