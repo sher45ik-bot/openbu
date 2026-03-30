@@ -26,6 +26,7 @@ android {
     }
 
     signingConfigs {
+    if (keystorePropertiesFile.exists()) {
         create("release") {
             keyAlias = keystoreProperties["keyAlias"] as String
             keyPassword = keystoreProperties["keyPassword"] as String
@@ -33,6 +34,7 @@ android {
             storePassword = keystoreProperties["storePassword"] as String
         }
     }
+}
 
     buildTypes {
         getByName("release") {
