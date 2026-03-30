@@ -53,7 +53,9 @@ I am strongly considering adding this to the [Google Play Store](https://play.go
 * Shows status of part fan, aux fan, and chamber fan depending on what the printer model has
 * Setting print speed
 * Pause/Resume and Stop
+* File management via `File Manager` which uses `FTPS`
 * Skip Objects support
+* Remote access via [openbu-relay](/helm/openbu-relay)
 
 [Feature requests](github.com/cygnusx-1-org/openbu/issues) are welcome.
 
